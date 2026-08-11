@@ -369,6 +369,171 @@
     const trashTip = window.COTTAGE_DATA.tips.find((item) => item.id === "trash");
     const topBusinesses = getBusinessesByIds((window.COTTAGE_DATA.businessHighlights?.[0]?.businessIds) || []);
 
+    const heroBlock = document.createElement("section");
+    heroBlock.className = "start-here-hero";
+
+    const heroTop = document.createElement("div");
+    heroTop.className = "start-here-hero-top";
+
+    const heroCopy = document.createElement("div");
+    heroCopy.className = "start-here-hero-copy";
+
+    const heroEyebrow = document.createElement("span");
+    heroEyebrow.className = "start-here-hero-eyebrow";
+    heroEyebrow.textContent = "Guest Quick Start";
+
+    const heroTitle = document.createElement("h2");
+    heroTitle.textContent = property.name || "Welcome to the cottage";
+
+    const heroSummary = document.createElement("p");
+    heroSummary.textContent = host.directBookingNote || "Use this page first for the fastest answers during your stay.";
+
+    const heroActionRow = document.createElement("div");
+    heroActionRow.className = "start-here-hero-actions";
+    heroActionRow.append(
+      makeButton("Essentials", () => selectTab("essentials"), "primary"),
+      makeButton("Calendar", () => selectTab("calendar")),
+      makeAnchor("Call Host", `tel:${toDialablePhone(host.phone || "")}`)
+    );
+
+    const quickContactRow = document.createElement("div");
+    quickContactRow.className = "start-here-quick-contact-row";
+    quickContactRow.append(
+      makeAnchor("Call Host", `tel:${toDialablePhone(host.phone || "")}`),
+      makeAnchor("Email Host", `mailto:${host.email || ""}`),
+      makeButton("Emergency", () => window.open("tel:911", "_self"), "primary"),
+      makeButton("Property Info", () => selectTab("essentials", "Property"))
+    );
+
+    heroCopy.append(heroEyebrow, heroTitle, heroSummary, heroActionRow, quickContactRow);
+
+    const heroStats = document.createElement("div");
+    heroStats.className = "start-here-hero-stats";
+
+    const stats = [
+      { label: "Check-in", value: property.checkIn || "3:00 PM" },
+      { label: "Check-out", value: property.checkOut || "10:00 AM" },
+      { label: "Host", value: host.name || "Rick" }
+    ];
+
+    stats.forEach((stat) => {
+      const item = document.createElement("div");
+      item.className = "start-here-stat";
+      const label = document.createElement("span");
+      label.textContent = stat.label;
+      const value = document.createElement("strong");
+      value.textContent = stat.value;
+      item.append(label, value);
+      heroStats.appendChild(item);
+    });
+
+    const heroPanel = document.createElement("div");
+    heroPanel.className = "start-here-hero-panel";
+
+    const panelTitle = document.createElement("strong");
+    panelTitle.textContent = "Quick Essentials";
+
+    const panelList = document.createElement("div");
+    panelList.className = "start-here-hero-panel-list";
+
+    const panelItems = [
+      { label: "Address", value: property.address || "64 Woodstock Ave, Long Point, ON" },
+      { label: "Emergency", value: "Call 911 for fire, medical, or police emergencies." },
+      { label: "Pump", value: "If water pressure drops, check the pump switch in the utility closet." },
+      { label: "Host", value: host.phone || "519 427 9922" }
+    ];
+
+    panelItems.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "start-here-hero-panel-item";
+
+      const label = document.createElement("span");
+      label.textContent = item.label;
+
+      const value = document.createElement("p");
+      value.textContent = item.value;
+
+      row.append(label, value);
+      panelList.appendChild(row);
+    });
+
+    heroPanel.append(panelTitle, panelList);
+
+    heroTop.append(heroCopy, heroStats, heroPanel);
+    heroBlock.appendChild(heroTop);
+
+    const featuredHighlight = window.COTTAGE_DATA.businessHighlights?.[0];
+    const featuredBusinesses = getBusinessesByIds(featuredHighlight?.businessIds || []);
+
+    if (featuredBusinesses.length) {
+      const featuredSection = document.createElement("section");
+      featuredSection.className = "start-here-featured-strip";
+
+      const featuredHeader = document.createElement("div");
+      featuredHeader.className = "start-here-featured-header";
+
+      const featuredEyebrow = document.createElement("span");
+      featuredEyebrow.className = "start-here-featured-eyebrow";
+      featuredEyebrow.textContent = "Featured Picks";
+
+      const featuredTitle = document.createElement("h3");
+      featuredTitle.textContent = featuredHighlight?.title || "Top Local Picks";
+
+      const featuredSummary = document.createElement("p");
+      featuredSummary.textContent = featuredHighlight?.summary || "A few good first options close to the cottage.";
+
+      featuredHeader.append(featuredEyebrow, featuredTitle, featuredSummary);
+
+      const featuredGrid = document.createElement("div");
+      featuredGrid.className = "start-here-featured-grid";
+
+      featuredBusinesses.slice(0, 3).forEach((item, index) => {
+        const card = document.createElement("article");
+        card.className = `start-here-featured-card start-here-featured-card-${index + 1}`;
+
+        const image = document.createElement("div");
+        image.className = "start-here-featured-image";
+        image.style.backgroundImage = "url('assets/logo.jpg')";
+
+        const overlay = document.createElement("div");
+        overlay.className = "start-here-featured-overlay";
+
+        const tag = document.createElement("span");
+        tag.textContent = item.category;
+
+        const title = document.createElement("h4");
+        title.textContent = item.name;
+
+        const summary = document.createElement("p");
+        summary.textContent = `${item.distance} | ${item.hours}`;
+
+        const actions = document.createElement("div");
+        actions.className = "start-here-featured-actions";
+        actions.append(
+          makeButton("Details", () =>
+            openDetails(item.name, {
+              paragraphs: [item.notes],
+              fields: [
+                { label: "Address", value: item.address },
+                { label: "Hours", value: item.hours }
+              ]
+            }), "primary"
+          )
+        );
+
+        if (hasMappableAddress(item.address)) {
+          actions.append(makeAnchor("Map", `https://maps.google.com/?q=${encodeURIComponent(item.address)}`));
+        }
+
+        overlay.append(tag, title, summary, actions);
+        card.append(image, overlay);
+        featuredGrid.appendChild(card);
+      });
+
+      featuredSection.append(featuredHeader, featuredGrid);
+      contentArea.appendChild(featuredSection);
+    }
+
     const startCards = [
       {
         tag: "Welcome",
@@ -425,6 +590,8 @@
       card.querySelector(".card-actions").append(...item.actions);
       contentArea.appendChild(card);
     });
+
+    contentArea.prepend(heroBlock);
 
     if (topBusinesses.length) {
       const groupBlock = document.createElement("div");
