@@ -11,16 +11,6 @@
 			],
 			"problemMatcher": [],
 			"group": "build"
-		},
-		{
-			"label": "Deploy Website (Netlify Production)",
-			"type": "shell",
-			"command": "cmd",
-			"args": [
-				"/c",
-				"deploy_website.cmd"
-			],
-			"problemMatcher": []
 		}
 	]
 }

@@ -1,38 +1,59 @@
 # Deployment
 
-This site can be deployed to Netlify or any static host.
+This site is configured for GitHub-to-DreamHost deployment.
 
-## Netlify
-1. Create a Netlify site and connect this repository.
-2. Set the publish directory to the project root.
-3. Deploy.
+## Automatic Updates To DreamHost
 
-The site entry point is index.html.
+The repository includes a GitHub Actions workflow at `.github/workflows/deploy-dreamhost.yml`.
 
-## Automatic Updates (Recommended)
+Every push to `main` can automatically deploy the live website files to DreamHost.
 
-Use Git + Netlify continuous deployment:
+## One-Time Setup In GitHub
 
-1. Create a GitHub repository for this project.
-2. Add that repository as this local git remote.
-3. Connect the GitHub repository to Netlify.
-4. Enable production deploys from your main branch.
+Open your GitHub repository:
 
-After that, each push to main automatically updates the live website.
+- `Settings` > `Secrets and variables` > `Actions`
 
-## Direct Deploy From This Folder
+Add these repository secrets:
 
-If you prefer direct deploy without Git pushes, this project includes `deploy_website.cmd`.
+1. `DREAMHOST_HOST`
+	- Your DreamHost SSH host name.
+	- Example format: `iad1-shared-b8-xx.dreamhost.com`
 
-One-time setup:
+2. `DREAMHOST_PORT`
+	- Usually `22`
 
-1. Create a Netlify personal access token.
-2. Copy your Netlify site ID.
-3. Set user environment variables:
-	- `NETLIFY_AUTH_TOKEN`
-	- `NETLIFY_SITE_ID`
+3. `DREAMHOST_USER`
+	- Your DreamHost SSH username
 
-Then run:
+4. `DREAMHOST_WEB_ROOT`
+	- The full server path for the live site
+	- Example: `/home/username/rdpsplace.me`
 
-- VS Code task: `Deploy Website (Netlify Production)`
-- Or command: `deploy_website.cmd`
+5. `DREAMHOST_SSH_KEY`
+	- A private SSH key with access to that DreamHost account
+
+## What Gets Deployed
+
+The workflow deploys only the live website files:
+
+- `index.html`
+- `app.js`
+- `data.js`
+- `styles.css`
+- `service-worker.js`
+- `manifest.webmanifest`
+- `assets/`
+
+## How Updates Work
+
+1. Make changes locally
+2. Commit them
+3. Push to `main`
+4. GitHub Actions deploys the updated site to DreamHost automatically
+
+## Manual Trigger
+
+You can also run the workflow manually from GitHub:
+
+- `Actions` > `Deploy to DreamHost` > `Run workflow`

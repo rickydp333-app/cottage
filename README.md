@@ -53,6 +53,14 @@ Use `android/build_android.cmd` to build the APK. It now copies the latest root 
 
 This keeps APK content aligned with the hosted website changes.
 
+## Website Deployment
+
+The website is set up for GitHub Actions deployment to DreamHost.
+
+After GitHub repository secrets are configured, each push to `main` can automatically update the live site.
+
+See `DEPLOYMENT.md` for the required DreamHost SSH secrets.
+
 ## Monthly Content Maintenance
 
 1. Verify business phone numbers, addresses, and hours in `data.js`.
