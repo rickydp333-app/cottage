@@ -17,6 +17,7 @@ copy /Y "%WEB_SRC%\data.js" "%WEB_DST%\data.js" >nul
 copy /Y "%WEB_SRC%\styles.css" "%WEB_DST%\styles.css" >nul
 copy /Y "%WEB_SRC%\service-worker.js" "%WEB_DST%\service-worker.js" >nul
 copy /Y "%WEB_SRC%\manifest.webmanifest" "%WEB_DST%\manifest.webmanifest" >nul
+if exist "%WEB_SRC%\data.private.js" copy /Y "%WEB_SRC%\data.private.js" "%WEB_DST%\data.private.js" >nul
 if not exist "%WEB_DST%\assets" mkdir "%WEB_DST%\assets"
 copy /Y "%WEB_SRC%\assets\logo.jpg" "%WEB_DST%\assets\logo.jpg" >nul
 

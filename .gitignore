@@ -6,6 +6,7 @@ Thumbs.db
 *.log
 *.tmp
 *.bak
+data.private.js
 
 # Android / Gradle outputs
 android/.gradle/

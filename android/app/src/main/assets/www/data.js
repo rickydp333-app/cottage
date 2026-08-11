@@ -1,7 +1,7 @@
 window.COTTAGE_DATA = {
   wifi: {
     network: "LPCasa5",
-    password: "LP2025-5"
+    password: "SET_IN_PRIVATE_CONFIG"
   },
   calendar: {
     refreshMinutes: 30,
@@ -13,11 +13,11 @@ window.COTTAGE_DATA = {
     sources: [
       {
         name: "Airbnb",
-        url: "https://www.airbnb.ca/calendar/ical/1156633077219967823.ics?t=9379c359f5fc43e0a317364993ec7cfd"
+        url: "SET_IN_PRIVATE_CONFIG"
       },
       {
         name: "VRBO",
-        url: "https://www.vrbo.com/icalendar/1b1d72b1c0054ec888c039ac27ca0baf.ics?nonTentative&includeTentative=true"
+        url: "SET_IN_PRIVATE_CONFIG"
       }
     ]
   },
@@ -859,7 +859,7 @@ window.COTTAGE_DATA = {
       category: "Wi-Fi",
       title: "Wi-Fi Access",
       summary: "Wi-Fi network: LPCasa5",
-      details: "Password: LP2025-5"
+      details: "Password is available in your private host config."
     },
     {
       id: "water",
@@ -941,3 +941,33 @@ window.COTTAGE_DATA = {
     ]
   }
 };
+
+if (window.COTTAGE_PRIVATE_DATA && typeof window.COTTAGE_PRIVATE_DATA === "object") {
+  mergeDeep(window.COTTAGE_DATA, window.COTTAGE_PRIVATE_DATA);
+}
+
+function isPlainObject(value) {
+  return Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function mergeDeep(target, source) {
+  Object.keys(source).forEach((key) => {
+    const sourceValue = source[key];
+    const targetValue = target[key];
+
+    if (Array.isArray(sourceValue)) {
+      target[key] = sourceValue;
+      return;
+    }
+
+    if (isPlainObject(sourceValue)) {
+      if (!isPlainObject(targetValue)) {
+        target[key] = {};
+      }
+      mergeDeep(target[key], sourceValue);
+      return;
+    }
+
+    target[key] = sourceValue;
+  });
+}

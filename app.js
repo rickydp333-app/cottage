@@ -352,7 +352,12 @@
     }
 
     if (calendarState.error) {
-      renderEmptyState(calendarState.error);
+      if (!calendarState.items.length) {
+        renderEmptyState(calendarState.error);
+        return;
+      }
+
+      renderEmptyState(`${calendarState.error} Showing last saved calendar data.`);
     }
 
     const filtered = calendarState.items.filter(matchesCalendarFilterAndSearch);
@@ -543,10 +548,14 @@
         }
 
         const actions = [
-          makeButton(
-            "Details",
-            () => openDetails(item.name, `<p>${item.notes}</p><p><strong>Address:</strong> ${item.address}</p><p><strong>Hours:</strong> ${item.hours}</p>`),
-            "primary"
+          makeButton("Details", () =>
+            openDetails(item.name, {
+              paragraphs: [item.notes],
+              fields: [
+                { label: "Address", value: item.address },
+                { label: "Hours", value: item.hours }
+              ]
+            }), "primary"
           )
         ];
 
@@ -595,7 +604,7 @@
         });
 
         card.querySelector(".card-actions").append(
-          makeButton("Read More", () => openDetails(item.title, `<p>${item.details}</p>`), "primary")
+          makeButton("Read More", () => openDetails(item.title, { paragraphs: [item.details] }), "primary")
         );
 
         cardsArea.appendChild(card);
@@ -634,7 +643,7 @@
         });
 
         card.querySelector(".card-actions").append(
-          makeButton("Read More", () => openDetails(item.title, `<p>${item.details}</p>`), "primary")
+          makeButton("Read More", () => openDetails(item.title, { paragraphs: [item.details] }), "primary")
         );
 
         cardsArea.appendChild(card);
@@ -1002,12 +1011,28 @@
     contentArea.appendChild(block);
   }
 
-  function openDetails(title, bodyHtml) {
+  function openDetails(title, content = {}) {
     if (dialogTitle) {
       dialogTitle.textContent = title;
     }
     if (dialogBody) {
-      dialogBody.innerHTML = bodyHtml;
+      dialogBody.textContent = "";
+
+      const paragraphs = Array.isArray(content.paragraphs) ? content.paragraphs : [];
+      paragraphs.forEach((entry) => {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = String(entry || "");
+        dialogBody.appendChild(paragraph);
+      });
+
+      const fields = Array.isArray(content.fields) ? content.fields : [];
+      fields.forEach((field) => {
+        const paragraph = document.createElement("p");
+        const strong = document.createElement("strong");
+        strong.textContent = `${String(field?.label || "Detail")}: `;
+        paragraph.append(strong, document.createTextNode(String(field?.value || "")));
+        dialogBody.appendChild(paragraph);
+      });
     }
     if (detailDialog && typeof detailDialog.showModal === "function") {
       detailDialog.showModal();
