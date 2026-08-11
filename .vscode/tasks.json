@@ -21,15 +21,6 @@
 				"deploy_website.cmd"
 			],
 			"problemMatcher": []
-		},
-		{
-			"label": "Commit task cleanup",
-			"type": "shell",
-			"command": "cmd",
-			"args": [
-				"/c",
-				"git add .vscode/tasks.json & git commit -m chore_tasks_cleanup"
-			]
 		}
 	]
 }
