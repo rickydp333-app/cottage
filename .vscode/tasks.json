@@ -11,16 +11,6 @@
 			],
 			"problemMatcher": [],
 			"group": "build"
-		},
-		{
-			"label": "Finalize and push cleanup",
-			"type": "shell",
-			"command": "cmd",
-			"args": [
-				"/c",
-				"git add -A & git commit -m \"Remove old Netlify deploy script\" & git push origin main & git status --short --branch"
-			],
-			"isBackground": false
 		}
 	]
 }
