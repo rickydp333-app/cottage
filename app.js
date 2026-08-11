@@ -468,6 +468,11 @@
     if (featuredBusinesses.length) {
       const featuredSection = document.createElement("section");
       featuredSection.className = "start-here-featured-strip";
+      const featuredTints = [
+        "linear-gradient(150deg, rgba(94, 60, 22, 0.30), rgba(20, 26, 22, 0.10))",
+        "linear-gradient(150deg, rgba(24, 77, 66, 0.30), rgba(20, 26, 22, 0.10))",
+        "linear-gradient(150deg, rgba(133, 70, 28, 0.30), rgba(20, 26, 22, 0.10))"
+      ];
 
       const featuredHeader = document.createElement("div");
       featuredHeader.className = "start-here-featured-header";
@@ -490,10 +495,17 @@
       featuredBusinesses.slice(0, 3).forEach((item, index) => {
         const card = document.createElement("article");
         card.className = `start-here-featured-card start-here-featured-card-${index + 1}`;
+        if (index === 0) {
+          card.classList.add("is-featured-lead");
+        }
 
         const image = document.createElement("div");
         image.className = "start-here-featured-image";
-        image.style.backgroundImage = "url('assets/logo.jpg')";
+        image.style.backgroundColor = "#1b1712";
+        image.style.backgroundImage = `${featuredTints[index % featuredTints.length]}, url('assets/logo.jpg')`;
+        image.style.backgroundSize = "cover, cover";
+        image.style.backgroundPosition = index === 0 ? "center 28%, center center" : "center center, center center";
+        image.style.backgroundRepeat = "no-repeat, no-repeat";
 
         const overlay = document.createElement("div");
         overlay.className = "start-here-featured-overlay";
@@ -504,8 +516,19 @@
         const title = document.createElement("h4");
         title.textContent = item.name;
 
+        const meta = document.createElement("div");
+        meta.className = "start-here-featured-meta";
+
+        const distance = document.createElement("span");
+        distance.textContent = item.distance;
+
+        const hours = document.createElement("span");
+        hours.textContent = item.hours;
+
+        meta.append(distance, hours);
+
         const summary = document.createElement("p");
-        summary.textContent = `${item.distance} | ${item.hours}`;
+        summary.textContent = item.notes || `${item.distance} | ${item.hours}`;
 
         const actions = document.createElement("div");
         actions.className = "start-here-featured-actions";
@@ -525,7 +548,7 @@
           actions.append(makeAnchor("Map", `https://maps.google.com/?q=${encodeURIComponent(item.address)}`));
         }
 
-        overlay.append(tag, title, summary, actions);
+        overlay.append(tag, title, meta, summary, actions);
         card.append(image, overlay);
         featuredGrid.appendChild(card);
       });
