@@ -1,4 +1,74 @@
 window.COTTAGE_DATA = {
+  host: {
+    name: "Rick",
+    phone: "519 427 9922",
+    email: "rickyp3@me.com",
+    directBookingNote: "Contact me directly for your next stay to save on third-party service fees and taxes."
+  },
+  property: {
+    name: "64 Woodstock Ave Cottage",
+    address: "64 Woodstock Ave, Long Point, ON",
+    checkIn: "3:00 PM",
+    checkOut: "10:00 AM"
+  },
+  essentials: [
+    {
+      id: "arrival-window",
+      category: "Arrival",
+      title: "Check-In and Check-Out",
+      summary: "Check-in after 3:00 PM and check-out before 10:00 AM.",
+      details: "If you need timing help for arrival or departure, contact the host in advance so arrangements can be confirmed."
+    },
+    {
+      id: "property-location",
+      category: "Property",
+      title: "Cottage Address",
+      summary: "64 Woodstock Ave, Long Point, ON.",
+      details: "Use this address for navigation, deliveries, or if emergency services ever need the property location."
+    },
+    {
+      id: "host-help",
+      category: "Support",
+      title: "Host Contact",
+      summary: "Call or email Rick if you need help during your stay.",
+      details: "Phone: 519 427 9922 | Email: rickyp3@me.com"
+    },
+    {
+      id: "urgent-safety",
+      category: "Emergency",
+      title: "Emergency Help",
+      summary: "Call 911 for fire, medical, or police emergencies.",
+      details: "For non-emergency issues at the cottage, contact the host first so local support can be arranged quickly."
+    },
+    {
+      id: "water-troubleshooting",
+      category: "Utilities",
+      title: "Water Pressure Help",
+      summary: "If water pressure drops, check the pump switch in the utility closet.",
+      details: "Avoid running the dishwasher, laundry, and long showers at the same time to keep pressure stable."
+    },
+    {
+      id: "departure-basics",
+      category: "Departure",
+      title: "Departure Basics",
+      summary: "Wash dishes, gather towels, take garbage out, and lock doors before leaving.",
+      details: "Use the Departure checklist for the full list before checkout."
+    }
+  ],
+  businessHighlights: [
+    {
+      id: "best-first-day",
+      title: "Easy First-Day Options",
+      summary: "Simple nearby picks for guests who want something low-friction after arrival.",
+      businessIds: ["long-point-bird-observatory", "burning-kiln-winery", "long-point-eco-adventures"]
+    },
+    {
+      id: "outdoor-favorites",
+      title: "Outdoor Favorites",
+      summary: "Good options if your group wants beach, trails, paddling, or wildlife experiences.",
+      businessIds: ["long-point-eco-adventures", "big-creek-national-wildlife-area", "long-point-bird-observatory"]
+    }
+  ],
   wifi: {
     network: "LPCasa5",
     password: "SET_IN_PRIVATE_CONFIG"

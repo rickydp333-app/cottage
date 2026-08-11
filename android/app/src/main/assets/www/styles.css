@@ -369,6 +369,27 @@ h3 {
   gap: 14px;
 }
 
+.start-here-intro {
+  margin: 0;
+  color: var(--muted);
+}
+
+.start-here-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.business-highlight-block,
+.start-here-group {
+  padding-bottom: 6px;
+}
+
+.business-highlight-block .group-heading,
+.start-here-group .group-heading {
+  font-size: 1.16rem;
+}
+
 .card {
   display: grid;
   align-content: start;

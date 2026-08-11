@@ -5,7 +5,7 @@
   window.__COTTAGE_APP_BOOTED__ = true;
 
   const state = {
-    tab: "businesses",
+    tab: "start",
     search: "",
     filter: "All",
     calendarYear: new Date().getFullYear()
@@ -69,12 +69,7 @@
   function bindEvents() {
     tabButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
-        state.tab = btn.dataset.tab;
-        state.search = "";
-        state.filter = "All";
-        searchInput.value = "";
-        setActiveTab();
-        render();
+        selectTab(btn.dataset.tab);
       });
     });
 
@@ -257,6 +252,17 @@
     tabButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === state.tab));
   }
 
+  function selectTab(tab, nextFilter = "All") {
+    state.tab = tab;
+    state.search = "";
+    state.filter = nextFilter;
+    if (searchInput) {
+      searchInput.value = "";
+    }
+    setActiveTab();
+    render();
+  }
+
   function render() {
     setActiveTab();
     renderFilterChips();
@@ -265,6 +271,13 @@
 
   function renderFilterChips() {
     const categories = getCategoriesForTab(state.tab);
+    if (!categories.length) {
+      filterChips.innerHTML = "";
+      filterChips.hidden = true;
+      return;
+    }
+
+    filterChips.hidden = false;
     const values = ["All", ...categories];
     filterChips.innerHTML = "";
 
@@ -283,6 +296,12 @@
   }
 
   function getCategoriesForTab(tab) {
+    if (tab === "start") {
+      return [];
+    }
+    if (tab === "essentials") {
+      return organizeItemsByCategory(window.COTTAGE_DATA.essentials || [], "category", "title").map((group) => group.category);
+    }
     if (tab === "events") {
       return ["Live Feed", "Local Source", "County Source"];
     }
@@ -303,6 +322,16 @@
 
   function renderCards() {
     contentArea.innerHTML = "";
+
+    if (state.tab === "start") {
+      renderStartHereCards();
+      return;
+    }
+
+    if (state.tab === "essentials") {
+      renderEssentialsCards();
+      return;
+    }
 
     if (state.tab === "events") {
       renderEventCards();
@@ -330,6 +359,180 @@
     }
 
     renderChecklistCards();
+  }
+
+  function renderStartHereCards() {
+    const host = window.COTTAGE_DATA.host || {};
+    const property = window.COTTAGE_DATA.property || {};
+    const wifiTip = window.COTTAGE_DATA.tips.find((item) => item.id === "wifi-access");
+    const waterTip = window.COTTAGE_DATA.tips.find((item) => item.id === "water");
+    const trashTip = window.COTTAGE_DATA.tips.find((item) => item.id === "trash");
+    const topBusinesses = getBusinessesByIds((window.COTTAGE_DATA.businessHighlights?.[0]?.businessIds) || []);
+
+    const startCards = [
+      {
+        tag: "Welcome",
+        title: property.name || "Start With The Basics",
+        summary: `${property.address || "Long Point cottage stay"} | Check-in after ${property.checkIn || "3:00 PM"} | Check-out before ${property.checkOut || "10:00 AM"}`,
+        actions: [makeButton("Open Essentials", () => selectTab("essentials"), "primary")]
+      },
+      {
+        tag: "Book Direct",
+        title: "Save On Platform Fees",
+        summary: host.directBookingNote || "Contact the host directly for future stays.",
+        actions: [
+          makeAnchor("Call Host", `tel:${toDialablePhone(host.phone || "")}`),
+          makeAnchor("Email Host", `mailto:${host.email || ""}`)
+        ].filter(Boolean)
+      },
+      {
+        tag: "Wi-Fi",
+        title: wifiTip?.title || "Wi-Fi Access",
+        summary: wifiTip?.summary || "Connect to the cottage Wi-Fi network.",
+        actions: [makeButton("View Wi-Fi Tip", () => selectTab("tips", "Wi-Fi"), "primary")]
+      },
+      {
+        tag: "Arrival",
+        title: "Arrival Checklist",
+        summary: `${window.COTTAGE_DATA.checklists.arrival.length} quick tasks to get settled smoothly.`,
+        actions: [makeButton("Open Arrival Tasks", () => selectTab("checklist", "Arrival"), "primary")]
+      },
+      {
+        tag: "Rules",
+        title: "Most Important House Rules",
+        summary: "Quiet hours, fire pit safety, smoking policy, and pet courtesy.",
+        actions: [makeButton("Review Rules", () => selectTab("rules"), "primary")]
+      },
+      {
+        tag: "Need Help?",
+        title: "Common Cottage Help",
+        summary: waterTip?.summary || "Check the most useful utility and house tips first.",
+        actions: [
+          makeButton("Helpful Tips", () => selectTab("tips"), "primary"),
+          makeButton("Open Essentials", () => selectTab("essentials", "Support"))
+        ]
+      },
+      {
+        tag: "Departure",
+        title: "Before You Leave",
+        summary: trashTip?.summary || "Departure reminders for garbage, towels, dishes, and lock-up.",
+        actions: [makeButton("Open Departure Tasks", () => selectTab("checklist", "Departure"), "primary")]
+      }
+    ];
+
+    startCards.forEach((item) => {
+      const card = makeCard({ tag: item.tag, title: item.title, summary: item.summary });
+      card.querySelector(".card-actions").append(...item.actions);
+      contentArea.appendChild(card);
+    });
+
+    if (topBusinesses.length) {
+      const groupBlock = document.createElement("div");
+      groupBlock.className = "group-block start-here-group";
+
+      const heading = document.createElement("h4");
+      heading.className = "group-heading";
+      heading.textContent = "Top Local Picks";
+
+      const intro = document.createElement("p");
+      intro.className = "start-here-intro";
+      intro.textContent = "A few good first options if you want something easy nearby.";
+
+      const cardsArea = document.createElement("div");
+      cardsArea.className = "group-cards";
+
+      topBusinesses.forEach((item) => {
+        const card = makeCard({
+          tag: item.category,
+          title: item.name,
+          summary: `${item.distance} | ${item.hours}`
+        });
+
+        card.querySelector(".card-actions").append(
+          makeButton("Details", () =>
+            openDetails(item.name, {
+              paragraphs: [item.notes],
+              fields: [
+                { label: "Address", value: item.address },
+                { label: "Hours", value: item.hours }
+              ]
+            }), "primary"
+          )
+        );
+
+        if (hasMappableAddress(item.address)) {
+          card.querySelector(".card-actions").append(
+            makeAnchor("Map", `https://maps.google.com/?q=${encodeURIComponent(item.address)}`)
+          );
+        }
+
+        cardsArea.appendChild(card);
+      });
+
+      const footerAction = makeButton("Browse All Businesses", () => selectTab("businesses"), "primary");
+      const footerRow = document.createElement("div");
+      footerRow.className = "start-here-footer";
+      footerRow.appendChild(footerAction);
+
+      groupBlock.append(heading, intro, cardsArea, footerRow);
+      contentArea.appendChild(groupBlock);
+    }
+  }
+
+  function renderEssentialsCards() {
+    const items = filterItems(window.COTTAGE_DATA.essentials || [], ["title", "summary", "details", "category"]);
+
+    if (!items.length) {
+      renderEmptyState("No essentials match your search.");
+      return;
+    }
+
+    const groupedItems = organizeItemsByCategory(items, "category", "title");
+    groupedItems.forEach(({ category, items: categoryItems }) => {
+      const groupBlock = document.createElement("div");
+      groupBlock.className = "group-block";
+
+      const heading = document.createElement("h4");
+      heading.className = "group-heading";
+      heading.textContent = category;
+
+      const cardsArea = document.createElement("div");
+      cardsArea.className = "group-cards";
+
+      categoryItems.forEach((item) => {
+        const card = makeCard({
+          tag: item.category,
+          title: item.title,
+          summary: item.summary
+        });
+
+        const actions = [makeButton("Read More", () => openDetails(item.title, { paragraphs: [item.details] }), "primary")];
+
+        if (item.id === "property-location") {
+          actions.push(makeAnchor("Map", `https://maps.google.com/?q=${encodeURIComponent(window.COTTAGE_DATA.property?.address || item.summary)}`));
+        }
+
+        if (item.id === "host-help") {
+          const host = window.COTTAGE_DATA.host || {};
+          if (host.phone) {
+            actions.push(makeAnchor("Call", `tel:${toDialablePhone(host.phone)}`));
+          }
+          if (host.email) {
+            actions.push(makeAnchor("Email", `mailto:${host.email}`));
+          }
+        }
+
+        if (item.id === "departure-basics") {
+          actions.push(makeButton("Departure Checklist", () => selectTab("checklist", "Departure")));
+        }
+
+        card.querySelector(".card-actions").append(...actions);
+        cardsArea.appendChild(card);
+      });
+
+      groupBlock.append(heading, cardsArea);
+      contentArea.appendChild(groupBlock);
+    });
   }
 
   function renderCalendarCards() {
@@ -566,6 +769,10 @@
       return;
     }
 
+    if (state.filter === "All" && !state.search) {
+      renderBusinessHighlights();
+    }
+
     const groupedItems = organizeItemsByCategory(items, "category", "name");
     groupedItems.forEach(({ category, items: categoryItems }) => {
       const groupBlock = document.createElement("div");
@@ -618,6 +825,61 @@
       });
 
       groupBlock.append(heading, cardsArea);
+      contentArea.appendChild(groupBlock);
+    });
+  }
+
+  function renderBusinessHighlights() {
+    const highlights = window.COTTAGE_DATA.businessHighlights || [];
+    highlights.forEach((highlight) => {
+      const businesses = getBusinessesByIds(highlight.businessIds || []);
+      if (!businesses.length) {
+        return;
+      }
+
+      const groupBlock = document.createElement("div");
+      groupBlock.className = "group-block business-highlight-block";
+
+      const heading = document.createElement("h4");
+      heading.className = "group-heading";
+      heading.textContent = highlight.title;
+
+      const intro = document.createElement("p");
+      intro.className = "start-here-intro";
+      intro.textContent = highlight.summary;
+
+      const cardsArea = document.createElement("div");
+      cardsArea.className = "group-cards";
+
+      businesses.forEach((item) => {
+        const card = makeCard({
+          tag: item.category,
+          title: item.name,
+          summary: `${item.distance} | ${item.hours}`
+        });
+
+        card.querySelector(".card-actions").append(
+          makeButton("Details", () =>
+            openDetails(item.name, {
+              paragraphs: [item.notes],
+              fields: [
+                { label: "Address", value: item.address },
+                { label: "Hours", value: item.hours }
+              ]
+            }), "primary"
+          )
+        );
+
+        if (hasMappableAddress(item.address)) {
+          card.querySelector(".card-actions").append(
+            makeAnchor("Map", `https://maps.google.com/?q=${encodeURIComponent(item.address)}`)
+          );
+        }
+
+        cardsArea.appendChild(card);
+      });
+
+      groupBlock.append(heading, intro, cardsArea);
       contentArea.appendChild(groupBlock);
     });
   }
@@ -1107,6 +1369,12 @@
 
   function unique(values) {
     return [...new Set(values)];
+  }
+
+  function getBusinessesByIds(ids) {
+    return (ids || [])
+      .map((id) => window.COTTAGE_DATA.businesses.find((item) => item.id === id))
+      .filter(Boolean);
   }
 
   function hasDialablePhone(phone) {
