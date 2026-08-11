@@ -1,0 +1,23 @@
+{
+  "name": "Cottage Information Screen",
+  "short_name": "Cottage Info",
+  "description": "Touch-friendly offline information kiosk for cottage guests.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f7f2e7",
+  "theme_color": "#f7f2e7",
+  "icons": [
+    {
+      "src": "./assets/logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}

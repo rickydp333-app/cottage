@@ -1,0 +1,53 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Android APK (synced assets)",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"android\\build_android.cmd"
+			],
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Deploy Website (Netlify Production)",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"deploy_website.cmd"
+			],
+			"problemMatcher": []
+		},
+		{
+			"label": "Git status check",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"git status --short --branch"
+			]
+		},
+		{
+			"label": "Set git origin",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"git remote add origin https://github.com/rickydp333-app/cottage.git & git remote -v"
+			]
+		},
+		{
+			"label": "Stage files",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"git add -A & git status --short --branch"
+			]
+		}
+	]
+}

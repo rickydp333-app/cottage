@@ -1,0 +1,1389 @@
+(() => {
+  if (window.__COTTAGE_APP_BOOTED__) {
+    return;
+  }
+  window.__COTTAGE_APP_BOOTED__ = true;
+
+  const state = {
+    tab: "businesses",
+    search: "",
+    filter: "All",
+    calendarYear: new Date().getFullYear()
+  };
+
+  const STORAGE_KEYS = {
+    textSize: "cottage-large-text",
+    checks: "cottage-checklist-state",
+    eventsCache: "cottage-events-cache-v2",
+    calendarCache: "cottage-calendar-cache-v1"
+  };
+
+  const tabButtons = Array.from(document.querySelectorAll(".tab"));
+  const contentArea = document.getElementById("contentArea");
+  const filterChips = document.getElementById("filterChips");
+  const searchInput = document.getElementById("searchInput");
+  const searchKeyboardToggle = document.getElementById("searchKeyboardToggle");
+  const searchKeyboard = document.getElementById("searchKeyboard");
+  const searchKeys = Array.from(document.querySelectorAll(".search-key"));
+  const clockNode = document.getElementById("clock");
+  const dateNode = document.getElementById("todayDate");
+  const textSizeToggle = document.getElementById("textSizeToggle");
+  const detailDialog = document.getElementById("detailDialog");
+  const dialogTitle = document.getElementById("dialogTitle");
+  const dialogBody = document.getElementById("dialogBody");
+  const closeDialog = document.getElementById("closeDialog");
+  const eventsState = {
+    loaded: false,
+    loading: false,
+    items: [],
+    lastUpdated: null,
+    error: ""
+  };
+  const calendarState = {
+    loaded: false,
+    loading: false,
+    items: [],
+    lastUpdated: null,
+    error: ""
+  };
+
+  const checklistState = loadChecklistState();
+
+  initClock();
+  bindEvents();
+  initSearchKeyboard();
+  hydrateTextSize();
+  initEventAutoRefresh();
+  initCalendarAutoRefresh();
+  render();
+
+  if ("serviceWorker" in navigator && "register" in navigator.serviceWorker) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("service-worker.js").catch(() => {
+        // App still works without service worker.
+      });
+    });
+  }
+
+  function bindEvents() {
+    tabButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.tab = btn.dataset.tab;
+        state.search = "";
+        state.filter = "All";
+        searchInput.value = "";
+        setActiveTab();
+        render();
+      });
+    });
+
+    searchInput.addEventListener("input", (event) => {
+      state.search = event.target.value.trim().toLowerCase();
+      renderCards();
+    });
+
+    textSizeToggle.addEventListener("click", () => {
+      const hasLargeText = document.body.classList.toggle("large-text");
+      localStorage.setItem(STORAGE_KEYS.textSize, String(hasLargeText));
+      textSizeToggle.textContent = `Large Text: ${hasLargeText ? "On" : "Off"}`;
+    });
+
+    if (closeDialog) {
+      closeDialog.addEventListener("click", () => {
+        if (typeof detailDialog?.close === "function") {
+          detailDialog.close();
+        }
+      });
+    }
+
+    if (detailDialog) {
+      detailDialog.addEventListener("click", (event) => {
+        if (typeof detailDialog.close !== "function") {
+          return;
+        }
+
+        const rect = detailDialog.getBoundingClientRect();
+        const clickedInDialog =
+          rect.top <= event.clientY &&
+          event.clientY <= rect.top + rect.height &&
+          rect.left <= event.clientX &&
+          event.clientX <= rect.left + rect.width;
+        if (!clickedInDialog) {
+          detailDialog.close();
+        }
+      });
+    }
+  }
+
+  function initSearchKeyboard() {
+    if (!searchInput || !searchKeyboard || !searchKeyboardToggle || !searchKeys.length) {
+      return;
+    }
+
+    const setKeyboardLock = (locked) => {
+      searchInput.readOnly = locked;
+    };
+
+    const showKeyboard = () => {
+      searchKeyboard.hidden = false;
+      searchKeyboard.setAttribute("aria-hidden", "false");
+    };
+
+    const hideKeyboard = () => {
+      searchKeyboard.hidden = true;
+      searchKeyboard.setAttribute("aria-hidden", "true");
+    };
+
+    const toggleKeyboard = () => {
+      if (searchKeyboard.hidden) {
+        setKeyboardLock(false);
+        showKeyboard();
+        searchInput.focus();
+        return;
+      }
+      hideKeyboard();
+      setKeyboardLock(true);
+      searchInput.blur();
+    };
+
+    const commitSearch = () => {
+      searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+
+    hideKeyboard();
+    setKeyboardLock(true);
+
+    searchKeyboardToggle.addEventListener("click", toggleKeyboard);
+
+    searchKeys.forEach((button) => {
+      button.addEventListener("click", () => {
+        const action = button.dataset.action;
+        const key = button.dataset.key;
+
+        if (action === "done") {
+          hideKeyboard();
+          setKeyboardLock(true);
+          searchInput.blur();
+          return;
+        }
+
+        if (action === "backspace") {
+          searchInput.value = searchInput.value.slice(0, -1);
+          commitSearch();
+          return;
+        }
+
+        if (action === "clear") {
+          searchInput.value = "";
+          commitSearch();
+          return;
+        }
+
+        if (action === "space") {
+          searchInput.value += " ";
+          commitSearch();
+          return;
+        }
+
+        if (key) {
+          searchInput.value += key;
+          commitSearch();
+        }
+      });
+    });
+
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      if (target === searchInput || searchInput.contains(target) || searchKeyboard.contains(target)) {
+        return;
+      }
+
+      if (target === searchKeyboardToggle || searchKeyboardToggle.contains(target)) {
+        return;
+      }
+
+      hideKeyboard();
+      setKeyboardLock(true);
+      searchInput.blur();
+    });
+  }
+
+  function initClock() {
+    const updateTime = () => {
+      const now = new Date();
+      clockNode.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      dateNode.textContent = now.toLocaleDateString([], {
+        weekday: "short",
+        month: "short",
+        day: "numeric"
+      });
+    };
+
+    updateTime();
+    setInterval(updateTime, 1000 * 20);
+  }
+
+  function initEventAutoRefresh() {
+    const refreshMs = window.COTTAGE_DATA.events.refreshMinutes * 60 * 1000;
+    setInterval(() => {
+      if (state.tab === "events") {
+        void loadEvents(true);
+      }
+    }, refreshMs);
+  }
+
+  function initCalendarAutoRefresh() {
+    const refreshMinutes = Number(window.COTTAGE_DATA?.calendar?.refreshMinutes || 30);
+    const refreshMs = Math.max(5, refreshMinutes) * 60 * 1000;
+    setInterval(() => {
+      if (state.tab === "calendar") {
+        void loadCalendars(true);
+      }
+    }, refreshMs);
+  }
+
+  function hydrateTextSize() {
+    const largeText = localStorage.getItem(STORAGE_KEYS.textSize) === "true";
+    document.body.classList.toggle("large-text", largeText);
+    textSizeToggle.textContent = `Large Text: ${largeText ? "On" : "Off"}`;
+  }
+
+  function setActiveTab() {
+    tabButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === state.tab));
+  }
+
+  function render() {
+    setActiveTab();
+    renderFilterChips();
+    renderCards();
+  }
+
+  function renderFilterChips() {
+    const categories = getCategoriesForTab(state.tab);
+    const values = ["All", ...categories];
+    filterChips.innerHTML = "";
+
+    values.forEach((value) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = `chip ${value === state.filter ? "active" : ""}`;
+      chip.textContent = value;
+      chip.addEventListener("click", () => {
+        state.filter = value;
+        renderCards();
+        renderFilterChips();
+      });
+      filterChips.appendChild(chip);
+    });
+  }
+
+  function getCategoriesForTab(tab) {
+    if (tab === "events") {
+      return ["Live Feed", "Local Source", "County Source"];
+    }
+    if (tab === "businesses") {
+      return organizeItemsByCategory(window.COTTAGE_DATA.businesses, "category", "name").map((group) => group.category);
+    }
+    if (tab === "rules") {
+      return organizeItemsByCategory(window.COTTAGE_DATA.rules, "category", "title").map((group) => group.category);
+    }
+    if (tab === "tips") {
+      return organizeItemsByCategory(window.COTTAGE_DATA.tips, "category", "title").map((group) => group.category);
+    }
+    if (tab === "calendar") {
+      return unique((window.COTTAGE_DATA.calendar?.sources || []).map((source) => source.name).filter(Boolean));
+    }
+    return ["Arrival", "Departure"];
+  }
+
+  function renderCards() {
+    contentArea.innerHTML = "";
+
+    if (state.tab === "events") {
+      renderEventCards();
+      return;
+    }
+
+    if (state.tab === "businesses") {
+      renderBusinessCards();
+      return;
+    }
+
+    if (state.tab === "rules") {
+      renderRuleCards();
+      return;
+    }
+
+    if (state.tab === "tips") {
+      renderTipCards();
+      return;
+    }
+
+    if (state.tab === "calendar") {
+      renderCalendarCards();
+      return;
+    }
+
+    renderChecklistCards();
+  }
+
+  function renderCalendarCards() {
+    contentArea.innerHTML = "";
+
+    const now = startOfDay(new Date());
+    const currentYear = now.getFullYear();
+    const year = Number(state.calendarYear) || currentYear;
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year, 11, 31);
+
+    if (!calendarState.loaded && !calendarState.loading) {
+      void loadCalendars();
+      renderEmptyState("Loading Airbnb and VRBO calendar feeds...");
+      return;
+    }
+
+    if (calendarState.loading) {
+      renderEmptyState("Loading Airbnb and VRBO calendar feeds...");
+      return;
+    }
+
+    if (calendarState.error) {
+      renderEmptyState(calendarState.error);
+    }
+
+    const filtered = calendarState.items.filter(matchesCalendarFilterAndSearch);
+    const daySourceMap = buildBlockedDaySourceMap(filtered, yearStart, yearEnd);
+
+    const yearCard = document.createElement("article");
+    yearCard.className = "card calendar-month-card";
+
+    const yearTitle = document.createElement("h3");
+    yearTitle.textContent = `Availability ${year}`;
+
+    const yearSummary = document.createElement("p");
+    yearSummary.textContent = `${daySourceMap.size} blocked day${daySourceMap.size === 1 ? "" : "s"} across all months.`;
+
+    const legend = createCalendarLegend();
+
+    const yearGrid = document.createElement("div");
+    yearGrid.className = "calendar-year-grid";
+
+    for (let monthIndex = 0; monthIndex < 12; monthIndex += 1) {
+      const monthAnchor = new Date(year, monthIndex, 1);
+      const monthBlockedDays = countBlockedDaysInMonth(daySourceMap, year, monthIndex);
+
+      const monthPanel = document.createElement("section");
+      monthPanel.className = "calendar-month-panel";
+
+      const monthTitle = document.createElement("h4");
+      monthTitle.textContent = monthAnchor.toLocaleDateString([], { month: "long" });
+
+      const monthSummary = document.createElement("p");
+      monthSummary.className = "calendar-month-summary";
+      monthSummary.textContent = `${monthBlockedDays} blocked day${monthBlockedDays === 1 ? "" : "s"}`;
+
+      const calendarGrid = createMonthGrid(monthAnchor, daySourceMap);
+      monthPanel.append(monthTitle, monthSummary, calendarGrid);
+      yearGrid.appendChild(monthPanel);
+    }
+
+    yearCard.append(yearTitle, yearSummary, legend, yearGrid);
+    contentArea.appendChild(yearCard);
+  }
+
+  function createCalendarLegend() {
+    const legend = document.createElement("div");
+    legend.className = "calendar-legend";
+
+    const entries = [
+      { key: "airbnb", label: "Airbnb" },
+      { key: "vrbo", label: "VRBO" },
+      { key: "mixed", label: "Both" },
+      { key: "today", label: "Today" }
+    ];
+
+    entries.forEach((entry) => {
+      const item = document.createElement("span");
+      item.className = `calendar-legend-item calendar-legend-${entry.key}`;
+      item.textContent = entry.label;
+      legend.appendChild(item);
+    });
+
+    return legend;
+  }
+
+  function countBlockedDaysInMonth(daySourceMap, year, monthIndex) {
+    const monthKey = `${year}-${String(monthIndex + 1).padStart(2, "0")}-`;
+    let count = 0;
+
+    daySourceMap.forEach((_, dateKey) => {
+      if (String(dateKey).startsWith(monthKey)) {
+        count += 1;
+      }
+    });
+
+    return count;
+  }
+
+  function renderEventCards() {
+    contentArea.innerHTML = "";
+
+    const sourceCard = makeCard({
+      tag: "Live Feed",
+      title: "Local Events Feed",
+      summary: eventsState.lastUpdated
+        ? `Showing next ${window.COTTAGE_DATA.events.upcomingWindowDays} days | Auto-refresh every ${window.COTTAGE_DATA.events.refreshMinutes} minutes | Last updated ${formatDateTime(eventsState.lastUpdated)}`
+        : `Showing next ${window.COTTAGE_DATA.events.upcomingWindowDays} days | Auto-refresh every ${window.COTTAGE_DATA.events.refreshMinutes} minutes`
+    });
+
+    const sourceActions = sourceCard.querySelector(".card-actions");
+    sourceActions.append(
+      makeButton("Refresh Now", () => {
+        void loadEvents(true);
+      }, "primary")
+    );
+
+    window.COTTAGE_DATA.events.liveFeeds.forEach((feed) => {
+      sourceActions.append(makeAnchor(feed.name, feed.url));
+    });
+
+    contentArea.appendChild(sourceCard);
+
+    if (!eventsState.loaded && !eventsState.loading) {
+      void loadEvents();
+      return;
+    }
+
+    if (eventsState.loading) {
+      renderEmptyState("Loading current local events...");
+    }
+
+    const sourceLinks = window.COTTAGE_DATA.events.sourceLinks.filter((source) =>
+      matchesEventFilterAndSearch({
+        category: source.category,
+        title: source.name,
+        summary: source.note
+      })
+    );
+
+    sourceLinks.forEach((source) => {
+      const card = makeCard({
+        tag: source.category,
+        title: source.name,
+        summary: source.note
+      });
+      card.querySelector(".card-actions").append(makeAnchor("Open Events", source.url));
+      contentArea.appendChild(card);
+    });
+
+    const liveItems = eventsState.items.filter((item) =>
+      matchesEventFilterAndSearch({
+        category: "Live Feed",
+        title: item.title,
+        summary: `${item.source} | ${item.when}`
+      })
+    );
+
+    liveItems.forEach((item) => {
+      const card = makeCard({
+        tag: "Live Feed",
+        title: item.title,
+        summary: `${item.when} | ${item.source}`
+      });
+      card.querySelector(".card-actions").append(makeAnchor("Read Update", item.url));
+      contentArea.appendChild(card);
+    });
+
+    if (!eventsState.loading && !sourceLinks.length && !liveItems.length) {
+      renderEmptyState("No events match your current filter or search.");
+    }
+
+    if (eventsState.error && !eventsState.loading) {
+      renderEmptyState(eventsState.error);
+    }
+  }
+
+  function renderBusinessCards() {
+    const items = filterItems(window.COTTAGE_DATA.businesses, ["name", "notes", "category", "address"]);
+
+    if (!items.length) {
+      renderEmptyState("No businesses match your search.");
+      return;
+    }
+
+    const groupedItems = organizeItemsByCategory(items, "category", "name");
+    groupedItems.forEach(({ category, items: categoryItems }) => {
+      const groupBlock = document.createElement("div");
+      groupBlock.className = "group-block";
+
+      const heading = document.createElement("h4");
+      heading.className = "group-heading";
+      heading.textContent = category;
+
+      const cardsArea = document.createElement("div");
+      cardsArea.className = "group-cards";
+
+      categoryItems.forEach((item) => {
+        const card = makeCard({
+          tag: item.category,
+          title: item.name,
+          summary: `${item.distance} | ${item.hours}`
+        });
+
+        const verificationIssues = getBusinessVerificationIssues(item);
+        if (verificationIssues.length) {
+          const verifyNote = document.createElement("p");
+          verifyNote.className = "card-verify-note";
+          verifyNote.textContent = `Verify: ${verificationIssues.join(" | ")}`;
+          card.querySelector(".card-actions").before(verifyNote);
+        }
+
+        const actions = [
+          makeButton(
+            "Details",
+            () => openDetails(item.name, `<p>${item.notes}</p><p><strong>Address:</strong> ${item.address}</p><p><strong>Hours:</strong> ${item.hours}</p>`),
+            "primary"
+          )
+        ];
+
+        if (hasDialablePhone(item.phone)) {
+          actions.push(makeAnchor("Call", `tel:${toDialablePhone(item.phone)}`));
+        }
+
+        if (hasMappableAddress(item.address)) {
+          actions.push(makeAnchor("Map", `https://maps.google.com/?q=${encodeURIComponent(item.address)}`));
+        }
+
+        card.querySelector(".card-actions").append(...actions);
+        cardsArea.appendChild(card);
+      });
+
+      groupBlock.append(heading, cardsArea);
+      contentArea.appendChild(groupBlock);
+    });
+  }
+
+  function renderRuleCards() {
+    const items = filterItems(window.COTTAGE_DATA.rules, ["title", "summary", "details", "category"]);
+
+    if (!items.length) {
+      renderEmptyState("No rules match your search.");
+      return;
+    }
+
+    const groupedItems = organizeItemsByCategory(items, "category", "title");
+    groupedItems.forEach(({ category, items: categoryItems }) => {
+      const groupBlock = document.createElement("div");
+      groupBlock.className = "group-block";
+
+      const heading = document.createElement("h4");
+      heading.className = "group-heading";
+      heading.textContent = category;
+
+      const cardsArea = document.createElement("div");
+      cardsArea.className = "group-cards";
+
+      categoryItems.forEach((item) => {
+        const card = makeCard({
+          tag: item.category,
+          title: item.title,
+          summary: item.summary
+        });
+
+        card.querySelector(".card-actions").append(
+          makeButton("Read More", () => openDetails(item.title, `<p>${item.details}</p>`), "primary")
+        );
+
+        cardsArea.appendChild(card);
+      });
+
+      groupBlock.append(heading, cardsArea);
+      contentArea.appendChild(groupBlock);
+    });
+  }
+
+  function renderTipCards() {
+    const items = filterItems(window.COTTAGE_DATA.tips, ["title", "summary", "details", "category"]);
+
+    if (!items.length) {
+      renderEmptyState("No tips match your search.");
+      return;
+    }
+
+    const groupedItems = organizeItemsByCategory(items, "category", "title");
+    groupedItems.forEach(({ category, items: categoryItems }) => {
+      const groupBlock = document.createElement("div");
+      groupBlock.className = "group-block";
+
+      const heading = document.createElement("h4");
+      heading.className = "group-heading";
+      heading.textContent = category;
+
+      const cardsArea = document.createElement("div");
+      cardsArea.className = "group-cards";
+
+      categoryItems.forEach((item) => {
+        const card = makeCard({
+          tag: item.category,
+          title: item.title,
+          summary: item.summary
+        });
+
+        card.querySelector(".card-actions").append(
+          makeButton("Read More", () => openDetails(item.title, `<p>${item.details}</p>`), "primary")
+        );
+
+        cardsArea.appendChild(card);
+      });
+
+      groupBlock.append(heading, cardsArea);
+      contentArea.appendChild(groupBlock);
+    });
+  }
+
+  function renderChecklistCards() {
+    const groups = [
+      { key: "arrival", title: "Arrival Checklist", tag: "Arrival", items: window.COTTAGE_DATA.checklists.arrival },
+      { key: "departure", title: "Departure Checklist", tag: "Departure", items: window.COTTAGE_DATA.checklists.departure }
+    ];
+
+    const visibleGroups = groups.filter((group) => {
+      const byFilter = state.filter === "All" || state.filter.toLowerCase() === group.tag.toLowerCase();
+      const bySearch = !state.search || group.title.toLowerCase().includes(state.search);
+      return byFilter && bySearch;
+    });
+
+    if (!visibleGroups.length) {
+      renderEmptyState("No checklists match your search.");
+      return;
+    }
+
+    visibleGroups.forEach((group) => {
+      const card = makeCard({ tag: group.tag, title: group.title, summary: "Tap to check tasks." });
+      const list = document.createElement("div");
+      list.className = "checklist";
+
+      group.items.forEach((task, index) => {
+        const id = `${group.key}-${index}`;
+        const row = document.createElement("label");
+        row.className = "checklist-item";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = Boolean(checklistState[id]);
+        checkbox.addEventListener("change", () => {
+          checklistState[id] = checkbox.checked;
+          localStorage.setItem(STORAGE_KEYS.checks, JSON.stringify(checklistState));
+        });
+
+        const text = document.createElement("span");
+        text.textContent = task;
+
+        row.append(checkbox, text);
+        list.appendChild(row);
+      });
+
+      const resetBtn = makeButton("Reset", () => {
+        Object.keys(checklistState)
+          .filter((key) => key.startsWith(group.key + "-"))
+          .forEach((key) => delete checklistState[key]);
+        localStorage.setItem(STORAGE_KEYS.checks, JSON.stringify(checklistState));
+        renderChecklistCards();
+      });
+
+      card.appendChild(list);
+      card.querySelector(".card-actions").append(resetBtn);
+      contentArea.appendChild(card);
+    });
+  }
+
+  async function loadEvents(forceRefresh = false) {
+    if (eventsState.loading) {
+      return;
+    }
+
+    const cache = readEventsCache();
+    const maxAgeMs = window.COTTAGE_DATA.events.refreshMinutes * 60 * 1000;
+    const isCacheFresh =
+      cache &&
+      typeof cache.fetchedAt === "string" &&
+      Date.now() - new Date(cache.fetchedAt).getTime() < maxAgeMs;
+
+    if (!forceRefresh && isCacheFresh) {
+      eventsState.items = cache.items;
+      eventsState.lastUpdated = cache.fetchedAt;
+      eventsState.loaded = true;
+      eventsState.error = "";
+      if (state.tab === "events") {
+        renderEventCards();
+      }
+      return;
+    }
+
+    eventsState.loading = true;
+    eventsState.error = "";
+    if (state.tab === "events") {
+      renderEventCards();
+    }
+
+    try {
+      const feedResults = await Promise.allSettled(
+        window.COTTAGE_DATA.events.liveFeeds.map(async (feed) => {
+          const response = await fetch(feed.url, { cache: "no-store" });
+          if (!response.ok) {
+            throw new Error(`Failed to fetch ${feed.name}.`);
+          }
+          const data = await response.json();
+          return { feed, data };
+        })
+      );
+
+      const feedResponses = feedResults
+        .filter((result) => result.status === "fulfilled")
+        .map((result) => result.value);
+
+      if (!feedResponses.length) {
+        throw new Error("No event feeds were available.");
+      }
+
+      const combined = feedResponses
+        .flatMap(({ feed, data }) => {
+          const rawItems = Array.isArray(data?.items) ? data.items : [];
+          return rawItems.map((entry, index) => {
+            const rawTitle = entry?.title || "Local Event";
+            return {
+              id: `live-${feed.name}-${index}-${entry?.link || rawTitle}`,
+              title: sanitizeHtml(rawTitle),
+              url: entry?.link || feed.url,
+              when: formatDate(entry?.pubDate),
+              sortDate: entry?.pubDate || "",
+              source: feed.name
+            };
+          });
+        })
+        .sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime());
+
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const windowEnd = new Date(startOfToday);
+      windowEnd.setDate(windowEnd.getDate() + Number(window.COTTAGE_DATA.events.upcomingWindowDays || 60));
+
+      const inWindow = combined.filter((item) => {
+        const parsed = new Date(item.sortDate);
+        return !Number.isNaN(parsed.getTime()) && parsed >= startOfToday && parsed <= windowEnd;
+      });
+
+      const items = inWindow
+        .slice(0, 12)
+        .map(({ sortDate, ...item }) => item);
+
+      eventsState.items = items;
+      eventsState.lastUpdated = new Date().toISOString();
+      eventsState.loaded = true;
+      writeEventsCache({ fetchedAt: eventsState.lastUpdated, items });
+    } catch {
+      eventsState.error = "Live feed is temporarily unavailable. Use the local source cards below for current events.";
+      if (cache?.items?.length) {
+        eventsState.items = cache.items;
+        eventsState.lastUpdated = cache.fetchedAt;
+        eventsState.loaded = true;
+      }
+    } finally {
+      eventsState.loading = false;
+      if (state.tab === "events") {
+        renderEventCards();
+      }
+    }
+  }
+
+  async function loadCalendars(forceRefresh = false) {
+    if (calendarState.loading) {
+      return;
+    }
+
+    const config = window.COTTAGE_DATA.calendar || {};
+    const refreshMinutes = Number(config.refreshMinutes || 30);
+    const maxAgeMs = Math.max(5, refreshMinutes) * 60 * 1000;
+    const cache = readCalendarCache();
+    const isCacheFresh =
+      cache &&
+      typeof cache.fetchedAt === "string" &&
+      Date.now() - new Date(cache.fetchedAt).getTime() < maxAgeMs;
+
+    if (!forceRefresh && isCacheFresh) {
+      calendarState.items = cache.items.map(reviveCalendarItem);
+      calendarState.lastUpdated = cache.fetchedAt;
+      calendarState.loaded = true;
+      calendarState.error = "";
+      if (state.tab === "calendar") {
+        renderCalendarCards();
+      }
+      return;
+    }
+
+    calendarState.loading = true;
+    calendarState.error = "";
+    if (state.tab === "calendar") {
+      renderCalendarCards();
+    }
+
+    try {
+      const validSources = (config.sources || []).filter((source) => {
+        const url = String(source?.url || "").trim();
+        return /^https?:\/\//i.test(url) && !url.includes("PASTE_");
+      });
+
+      if (!validSources.length) {
+        calendarState.items = [];
+        calendarState.loaded = true;
+        calendarState.error = "Add your Airbnb and VRBO iCal URLs in data.js under calendar.sources.";
+        return;
+      }
+
+      const results = await Promise.allSettled(
+        validSources.map(async (source) => {
+          const text = await fetchCalendarText(String(source.url), config.fetchStrategies || []);
+          const events = parseIcsEvents(text).map((event) => ({
+            source: source.name || "Calendar",
+            summary: event.summary || "Reserved",
+            start: event.start,
+            end: event.end
+          }));
+          return events;
+        })
+      );
+
+      const loadedEvents = results
+        .filter((result) => result.status === "fulfilled")
+        .flatMap((result) => result.value)
+        .filter((item) => item.start instanceof Date && item.end instanceof Date && item.end.getTime() > item.start.getTime())
+        .sort((left, right) => left.start.getTime() - right.start.getTime());
+
+      if (!loadedEvents.length) {
+        throw new Error("No calendar events were loaded.");
+      }
+
+      calendarState.items = loadedEvents;
+      calendarState.lastUpdated = new Date().toISOString();
+      calendarState.loaded = true;
+
+      writeCalendarCache({
+        fetchedAt: calendarState.lastUpdated,
+        items: loadedEvents.map((item) => ({
+          source: item.source,
+          summary: item.summary,
+          start: item.start.toISOString(),
+          end: item.end.toISOString()
+        }))
+      });
+    } catch {
+      calendarState.error = "Calendar feeds are temporarily unavailable. Check iCal URLs or try refresh.";
+      if (cache?.items?.length) {
+        calendarState.items = cache.items.map(reviveCalendarItem);
+        calendarState.lastUpdated = cache.fetchedAt;
+        calendarState.loaded = true;
+      }
+    } finally {
+      calendarState.loading = false;
+      if (state.tab === "calendar") {
+        renderCalendarCards();
+      }
+    }
+  }
+
+  function filterItems(items, fields) {
+    return items.filter((item) => {
+      const byFilter = state.filter === "All" || String(item.category).toLowerCase() === state.filter.toLowerCase();
+      if (!byFilter) {
+        return false;
+      }
+
+      if (!state.search) {
+        return true;
+      }
+
+      return fields.some((field) => String(item[field]).toLowerCase().includes(state.search));
+    });
+  }
+
+  function organizeItemsByCategory(items, categoryField = "category", titleField = "title") {
+    const buckets = new Map();
+
+    items.forEach((item) => {
+      const category = String(item?.[categoryField] || "General").trim() || "General";
+      if (!buckets.has(category)) {
+        buckets.set(category, []);
+      }
+      buckets.get(category).push(item);
+    });
+
+    return Array.from(buckets.entries())
+      .map(([category, entries]) => ({
+        category,
+        items: entries.slice().sort((left, right) => {
+          const leftLabel = String(left?.[titleField] || left?.name || "").trim().toLowerCase();
+          const rightLabel = String(right?.[titleField] || right?.name || "").trim().toLowerCase();
+          return leftLabel.localeCompare(rightLabel);
+        })
+      }))
+      .sort((left, right) => left.category.localeCompare(right.category, undefined, { sensitivity: "base" }));
+  }
+
+  function matchesEventFilterAndSearch(item) {
+    const byFilter = state.filter === "All" || String(item.category).toLowerCase() === state.filter.toLowerCase();
+    if (!byFilter) {
+      return false;
+    }
+
+    if (!state.search) {
+      return true;
+    }
+
+    const haystack = `${item.title} ${item.summary} ${item.category}`.toLowerCase();
+    return haystack.includes(state.search);
+  }
+
+  function matchesCalendarFilterAndSearch(item) {
+    const byFilter = state.filter === "All" || String(item.source).toLowerCase() === state.filter.toLowerCase();
+    if (!byFilter) {
+      return false;
+    }
+
+    if (!state.search) {
+      return true;
+    }
+
+    const summary = String(item.summary || "").toLowerCase();
+    const source = String(item.source || "").toLowerCase();
+    const range = formatRange(item.start, item.end).toLowerCase();
+    const haystack = `${summary} ${source} ${range}`;
+    return haystack.includes(state.search);
+  }
+
+  function makeCard({ tag, title, summary }) {
+    const card = document.createElement("article");
+    card.className = "card";
+    card.innerHTML = `
+      <span class="card-tag">${escapeHtml(tag)}</span>
+      <h3>${escapeHtml(title)}</h3>
+      <p>${escapeHtml(summary)}</p>
+      <div class="card-actions"></div>
+    `;
+    return card;
+  }
+
+  function makeButton(label, onClick, typeClass = "") {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `action-btn ${typeClass}`.trim();
+    btn.textContent = label;
+    btn.addEventListener("click", () => onClick(btn));
+    return btn;
+  }
+
+  function makeAnchor(label, href) {
+    const link = document.createElement("a");
+    link.className = "action-btn";
+    link.href = href;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = label;
+    return link;
+  }
+
+  function renderEmptyState(message) {
+    const block = document.createElement("div");
+    block.className = "empty-state";
+    block.textContent = message;
+    contentArea.appendChild(block);
+  }
+
+  function openDetails(title, bodyHtml) {
+    if (dialogTitle) {
+      dialogTitle.textContent = title;
+    }
+    if (dialogBody) {
+      dialogBody.innerHTML = bodyHtml;
+    }
+    if (detailDialog && typeof detailDialog.showModal === "function") {
+      detailDialog.showModal();
+    }
+  }
+
+  function unique(values) {
+    return [...new Set(values)];
+  }
+
+  function hasDialablePhone(phone) {
+    return toDialablePhone(phone).length >= 10;
+  }
+
+  function toDialablePhone(phone) {
+    return String(phone || "").replace(/[^\d+]/g, "").replace(/(?!^)\+/g, "");
+  }
+
+  function hasMappableAddress(address) {
+    const value = String(address || "").trim().toLowerCase();
+    return Boolean(value) && !value.includes("not confirmed") && !value.includes("unknown");
+  }
+
+  function getBusinessVerificationIssues(item) {
+    const phone = String(item?.phone || "").trim().toLowerCase();
+    const hours = String(item?.hours || "").trim().toLowerCase();
+    const address = String(item?.address || "").trim().toLowerCase();
+
+    const issues = [];
+
+    const phoneUncertain = !hasDialablePhone(item?.phone) || phone.includes("not listed") || phone.includes("unknown");
+    const hoursUncertain =
+      hours.includes("call for hours") ||
+      hours.includes("hours not listed") ||
+      hours.includes("check current listing");
+    const addressUncertain = address.includes("not confirmed") || address.includes("unknown");
+
+    if (phoneUncertain) {
+      issues.push("Phone not verified");
+    }
+    if (hoursUncertain) {
+      issues.push("Hours not verified");
+    }
+    if (addressUncertain) {
+      issues.push("Address not verified");
+    }
+
+    // Keep badges focused on materially uncertain listings.
+    if ((phoneUncertain && hoursUncertain) || (hoursUncertain && addressUncertain)) {
+      return issues;
+    }
+
+    return [];
+  }
+
+  function formatDate(value) {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return "Date not available";
+    }
+    return parsed.toLocaleDateString([], {
+      weekday: "short",
+      month: "short",
+      day: "numeric"
+    });
+  }
+
+  function formatDateTime(value) {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return "unknown time";
+    }
+    return parsed.toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  function sanitizeHtml(value) {
+    const parser = document.createElement("div");
+    parser.innerHTML = String(value);
+    return parser.textContent || parser.innerText || "Local Update";
+  }
+
+  function readEventsCache() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.eventsCache);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function readCalendarCache() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.calendarCache);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCalendarCache(value) {
+    localStorage.setItem(STORAGE_KEYS.calendarCache, JSON.stringify(value));
+  }
+
+  function writeEventsCache(value) {
+    localStorage.setItem(STORAGE_KEYS.eventsCache, JSON.stringify(value));
+  }
+
+  function loadChecklistState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.checks);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function reviveCalendarItem(item) {
+    return {
+      source: item.source,
+      summary: item.summary,
+      start: new Date(item.start),
+      end: new Date(item.end)
+    };
+  }
+
+  async function fetchCalendarText(url, strategies) {
+    const attempts = [
+      { type: "direct", url },
+      ...strategies
+        .filter((strategy) => strategy !== "direct")
+        .map((strategy) => ({
+          type: "proxy",
+          url: String(strategy).replace("{{url}}", encodeURIComponent(url)).replace("{{rawUrl}}", url)
+        }))
+    ];
+
+    for (const attempt of attempts) {
+      try {
+        const response = await fetch(attempt.url, { cache: "no-store" });
+        if (!response.ok) {
+          continue;
+        }
+        const text = await response.text();
+        if (text.includes("BEGIN:VCALENDAR")) {
+          return text;
+        }
+      } catch {
+        // Try next strategy.
+      }
+    }
+
+    throw new Error("Unable to load calendar feed.");
+  }
+
+  function parseIcsEvents(icsText) {
+    const unfolded = String(icsText || "").replace(/\r?\n[ \t]/g, "");
+    const lines = unfolded.split(/\r?\n/);
+    const events = [];
+    let current = null;
+
+    lines.forEach((line) => {
+      if (line === "BEGIN:VEVENT") {
+        current = {};
+        return;
+      }
+
+      if (line === "END:VEVENT") {
+        if (!current?.dtstart) {
+          current = null;
+          return;
+        }
+
+        const start = parseIcsDate(current.dtstart);
+        const end = parseIcsDate(current.dtend) || addDays(start, 1);
+        if (start && end && end.getTime() > start.getTime()) {
+          events.push({
+            start,
+            end,
+            summary: current.summary || "Reserved"
+          });
+        }
+
+        current = null;
+        return;
+      }
+
+      if (!current) {
+        return;
+      }
+
+      if (line.startsWith("DTSTART")) {
+        current.dtstart = extractIcsValue(line);
+      } else if (line.startsWith("DTEND")) {
+        current.dtend = extractIcsValue(line);
+      } else if (line.startsWith("SUMMARY")) {
+        current.summary = extractIcsValue(line);
+      }
+    });
+
+    return events;
+  }
+
+  function extractIcsValue(line) {
+    const splitIndex = line.indexOf(":");
+    if (splitIndex === -1) {
+      return "";
+    }
+    return line.slice(splitIndex + 1).trim();
+  }
+
+  function parseIcsDate(value) {
+    const input = String(value || "").trim();
+    if (!input) {
+      return null;
+    }
+
+    if (/^\d{8}$/.test(input)) {
+      const year = Number(input.slice(0, 4));
+      const month = Number(input.slice(4, 6)) - 1;
+      const day = Number(input.slice(6, 8));
+      return new Date(year, month, day);
+    }
+
+    const withTime = input.replace("Z", "");
+    if (/^\d{8}T\d{6}$/.test(withTime)) {
+      const year = Number(withTime.slice(0, 4));
+      const month = Number(withTime.slice(4, 6)) - 1;
+      const day = Number(withTime.slice(6, 8));
+      const hour = Number(withTime.slice(9, 11));
+      const minute = Number(withTime.slice(11, 13));
+      const second = Number(withTime.slice(13, 15));
+      // Treat iCal booking times as calendar-local values to avoid timezone
+      // shifts that can move blocked days backward in the month grid.
+      return new Date(year, month, day, hour, minute, second);
+    }
+
+    const parsed = new Date(input);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  function createMonthGrid(anchorDate, daySourceMap) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "calendar-grid-wrap";
+
+    const grid = document.createElement("div");
+    grid.className = "calendar-grid";
+
+    ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach((label) => {
+      const cell = document.createElement("div");
+      cell.className = "calendar-cell calendar-cell-head";
+      cell.textContent = label;
+      grid.appendChild(cell);
+    });
+
+    const monthStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
+    const daysInMonth = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0).getDate();
+    const startWeekday = monthStart.getDay();
+
+    for (let i = 0; i < startWeekday; i += 1) {
+      const empty = document.createElement("div");
+      empty.className = "calendar-cell calendar-cell-empty";
+      grid.appendChild(empty);
+    }
+
+    const todayKey = toDateKey(new Date());
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const date = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), day);
+      const key = toDateKey(date);
+      const daySources = daySourceMap.get(key);
+      const cell = document.createElement("div");
+      cell.className = "calendar-cell";
+
+      if (daySources?.size) {
+        cell.classList.add("calendar-cell-blocked");
+        if (daySources.size > 1) {
+          cell.classList.add("calendar-cell-mixed");
+        } else if (daySources.has("airbnb")) {
+          cell.classList.add("calendar-cell-airbnb");
+        } else if (daySources.has("vrbo")) {
+          cell.classList.add("calendar-cell-vrbo");
+        } else {
+          cell.classList.add("calendar-cell-other");
+        }
+      }
+      if (key === todayKey) {
+        cell.classList.add("calendar-cell-today");
+      }
+
+      cell.textContent = String(day);
+      grid.appendChild(cell);
+    }
+
+    wrapper.appendChild(grid);
+    return wrapper;
+  }
+
+  function normalizeCalendarSourceName(sourceName) {
+    const value = String(sourceName || "").trim().toLowerCase();
+    if (value.includes("airbnb")) {
+      return "airbnb";
+    }
+    if (value.includes("vrbo") || value.includes("verbo")) {
+      return "vrbo";
+    }
+    return "other";
+  }
+
+  function buildBlockedDaySourceMap(items, windowStart, windowEnd) {
+    const blockedBySource = new Map();
+    const startLimit = startOfDay(windowStart);
+    const endLimit = startOfDay(windowEnd);
+
+    items.forEach((item) => {
+      const sourceKey = normalizeCalendarSourceName(item.source);
+      let cursor = startOfDay(item.start);
+      const endExclusive = startOfDay(item.end);
+      while (cursor.getTime() < endExclusive.getTime()) {
+        if (cursor.getTime() >= startLimit.getTime() && cursor.getTime() <= endLimit.getTime()) {
+          const key = toDateKey(cursor);
+          if (!blockedBySource.has(key)) {
+            blockedBySource.set(key, new Set());
+          }
+          blockedBySource.get(key).add(sourceKey);
+        }
+        cursor = addDays(cursor, 1);
+      }
+    });
+
+    return blockedBySource;
+  }
+
+  function toDateKey(value) {
+    const date = startOfDay(value);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function formatRange(start, endExclusive) {
+    const startDay = startOfDay(start);
+    const checkoutDay = startOfDay(endExclusive);
+    const endDay = addDays(checkoutDay, -1);
+
+    const startLabel = startDay.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+    const endLabel = endDay.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+    if (startDay.getTime() === endDay.getTime()) {
+      return startLabel;
+    }
+    return `${startLabel} - ${endLabel}`;
+  }
+
+  function addDays(date, days) {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+  }
+
+  function startOfDay(value) {
+    const date = new Date(value);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+})();

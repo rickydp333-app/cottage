@@ -1,0 +1,20 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Local env and temp
+*.log
+*.tmp
+*.bak
+
+# Android / Gradle outputs
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+
+# Local tools and SDK bundles
+tools/
+
+# VS Code workspace cruft
+.vscode/*.log
