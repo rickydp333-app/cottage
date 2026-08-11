@@ -44,7 +44,8 @@
     loading: false,
     items: [],
     lastUpdated: null,
-    error: ""
+    error: "",
+    sourceStatuses: []
   };
 
   const checklistState = loadChecklistState();
@@ -353,11 +354,17 @@
 
     if (calendarState.error) {
       if (!calendarState.items.length) {
+        renderCalendarStatusCard();
         renderEmptyState(calendarState.error);
         return;
       }
 
+      renderCalendarStatusCard();
       renderEmptyState(`${calendarState.error} Showing last saved calendar data.`);
+    }
+
+    if (calendarState.sourceStatuses.length) {
+      renderCalendarStatusCard();
     }
 
     const filtered = calendarState.items.filter(matchesCalendarFilterAndSearch);
@@ -398,6 +405,45 @@
 
     yearCard.append(yearTitle, yearSummary, legend, yearGrid);
     contentArea.appendChild(yearCard);
+  }
+
+  function renderCalendarStatusCard() {
+    const statusCard = makeCard({
+      tag: "Calendar Feed",
+      title: "Calendar Source Status",
+      summary: calendarState.lastUpdated
+        ? `Last updated ${formatDateTime(calendarState.lastUpdated)}`
+        : "Live status for each booking source."
+    });
+
+    const statusList = document.createElement("div");
+    statusList.className = "calendar-source-status-list";
+
+    const statuses = calendarState.sourceStatuses.length
+      ? calendarState.sourceStatuses
+      : [{ name: "Calendar", ok: false, message: "No source status available yet." }];
+
+    statuses.forEach((status) => {
+      const row = document.createElement("div");
+      row.className = `calendar-source-status ${status.ok ? "is-ok" : "is-error"}`;
+
+      const name = document.createElement("strong");
+      name.textContent = status.name;
+
+      const detail = document.createElement("span");
+      detail.textContent = status.ok ? "Loaded" : status.message || "Failed";
+
+      row.append(name, detail);
+      statusList.appendChild(row);
+    });
+
+    statusCard.insertBefore(statusList, statusCard.querySelector(".card-actions"));
+    statusCard.querySelector(".card-actions").append(
+      makeButton("Refresh Now", () => {
+        void loadCalendars(true);
+      }, "primary")
+    );
+    contentArea.appendChild(statusCard);
   }
 
   function createCalendarLegend() {
@@ -828,6 +874,7 @@
       calendarState.lastUpdated = cache.fetchedAt;
       calendarState.loaded = true;
       calendarState.error = "";
+      calendarState.sourceStatuses = buildCalendarSourceStatuses(config.sources || [], true, "Loaded from saved cache.");
       if (state.tab === "calendar") {
         renderCalendarCards();
       }
@@ -836,6 +883,7 @@
 
     calendarState.loading = true;
     calendarState.error = "";
+    calendarState.sourceStatuses = [];
     if (state.tab === "calendar") {
       renderCalendarCards();
     }
@@ -850,6 +898,7 @@
         calendarState.items = [];
         calendarState.loaded = true;
         calendarState.error = "Add your Airbnb and VRBO iCal URLs in data.js under calendar.sources.";
+        calendarState.sourceStatuses = buildCalendarSourceStatuses(config.sources || [], false, "Missing or invalid URL.");
         return;
       }
 
@@ -865,6 +914,23 @@
           return events;
         })
       );
+
+      calendarState.sourceStatuses = validSources.map((source, index) => {
+        const result = results[index];
+        if (result.status === "fulfilled") {
+          return {
+            name: source.name || "Calendar",
+            ok: true,
+            message: `${result.value.length} event${result.value.length === 1 ? "" : "s"} loaded.`
+          };
+        }
+
+        return {
+          name: source.name || "Calendar",
+          ok: false,
+          message: result.reason instanceof Error ? result.reason.message : "Feed failed to load."
+        };
+      });
 
       const loadedEvents = results
         .filter((result) => result.status === "fulfilled")
@@ -1170,6 +1236,14 @@
       start: new Date(item.start),
       end: new Date(item.end)
     };
+  }
+
+  function buildCalendarSourceStatuses(sources, ok, message) {
+    return (sources || []).map((source) => ({
+      name: source?.name || "Calendar",
+      ok,
+      message
+    }));
   }
 
   async function fetchCalendarText(url, strategies) {

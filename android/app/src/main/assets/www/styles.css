@@ -426,6 +426,41 @@ h3 {
   font-weight: 700;
 }
 
+.calendar-source-status-list {
+  display: grid;
+  gap: 8px;
+}
+
+.calendar-source-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid #ddd4c6;
+  background: #fffaf4;
+}
+
+.calendar-source-status strong {
+  color: var(--ink);
+}
+
+.calendar-source-status span {
+  color: var(--muted);
+  text-align: right;
+}
+
+.calendar-source-status.is-ok {
+  border-color: #b8d7c7;
+  background: #f2fbf5;
+}
+
+.calendar-source-status.is-error {
+  border-color: #e7b58b;
+  background: #fff4ea;
+}
+
 .card-actions {
   display: flex;
   flex-wrap: wrap;
