@@ -1,10 +1,10 @@
-const CACHE_NAME = "cottage-info-v30";
+const CACHE_NAME = "cottage-info-v31";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=30",
-  "./app.js?v=30",
-  "./data.js?v=30",
+  "./styles.css?v=31",
+  "./app.js?v=31",
+  "./data.js?v=31",
   "./manifest.webmanifest",
   "./assets/logo.jpg"
 ];
@@ -43,6 +43,19 @@ self.addEventListener("fetch", (event) => {
 
   const path = requestUrl.pathname.toLowerCase();
   const isAppShellRequest = APP_SHELL_SUFFIXES.some((suffix) => path === suffix || path.endsWith(suffix));
+
+  if (path.endsWith("/data.private.js")) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          const copy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
   if (!isAppShellRequest) {
     event.respondWith(

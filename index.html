@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=Manrope:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=30" />
+    <link rel="stylesheet" href="styles.css?v=31" />
   </head>
   <body>
     <div class="bg-shape bg-shape-a" aria-hidden="true"></div>
@@ -28,7 +28,7 @@
         <p class="hero-kicker">Guest Information</p>
         <h1>Welcome to 64 Woodstock Ave Long Point Ontario</h1>
         <button class="tab hero-calendar-tab" type="button" data-tab="calendar">Availability Calendar</button>
-        <p class="hero-callout">Contact me directly for your next stay to save on third-party service fees and taxes.</p>
+        <p class="hero-callout">Your quick guide for arriving, settling in, and enjoying Long Point.</p>
 
         <div class="hero-meta">
           <div class="meta-card">
@@ -39,11 +39,15 @@
             <span class="meta-label">Time</span>
             <span id="clock" class="meta-value">-</span>
           </div>
+          <div class="meta-card">
+            <span class="meta-label">Guide checked</span>
+            <span id="contentReviewed" class="meta-value">-</span>
+          </div>
           <button id="textSizeToggle" class="meta-button" type="button">Large Text: Off</button>
         </div>
       </header>
 
-      <nav class="tabs" aria-label="Information categories">
+      <nav class="tabs" role="tablist" aria-label="Information categories">
         <button class="tab active" type="button" data-tab="start">Start Here</button>
         <button class="tab" type="button" data-tab="essentials">Essentials</button>
         <button class="tab" type="button" data-tab="businesses">Local Businesses</button>
@@ -57,11 +61,12 @@
         <label class="search-wrap" for="searchInput">
           <span>Search this section</span>
           <div class="search-input-row">
-            <input id="searchInput" type="search" inputmode="none" autocomplete="off" placeholder="Search by name, topic, or keyword" />
-            <button id="searchKeyboardToggle" class="keyboard-toggle-btn" type="button">Keyboard</button>
+            <input id="searchInput" type="search" inputmode="text" autocomplete="off" placeholder="Search this section" />
+            <button id="searchKeyboardToggle" class="keyboard-toggle-btn" type="button" aria-expanded="false">Touch Keyboard</button>
           </div>
         </label>
-        <p class="hero-subtitle">Tap any section below for local businesses, house rules, helpful tips, and live availability.</p>
+        <p class="hero-subtitle">Find the answer you need, then call, map, or check it in one tap.</p>
+        <p id="searchStatus" class="search-status" aria-live="polite"></p>
         <div id="searchKeyboard" class="search-keyboard" hidden aria-hidden="true" aria-label="On-screen search keyboard">
           <div class="search-keyboard-row search-keyboard-row-numbers">
             <button type="button" class="search-key" data-key="1">1</button>
@@ -120,18 +125,18 @@
       <section id="contentArea" class="grid" aria-live="polite"></section>
     </main>
 
-    <dialog id="detailDialog" class="detail-dialog">
+    <dialog id="detailDialog" class="detail-dialog" aria-labelledby="dialogTitle">
       <article>
         <header class="dialog-header">
-          <h2 id="dialogTitle">Details</h2>
+          <h2 id="dialogTitle" tabindex="-1">Details</h2>
           <button id="closeDialog" class="close-btn" type="button" aria-label="Close">Close</button>
         </header>
         <div id="dialogBody" class="dialog-body"></div>
       </article>
     </dialog>
 
-    <script src="data.js?v=30"></script>
+    <script src="data.js?v=31"></script>
     <script src="data.private.js?v=1"></script>
-    <script src="app.js?v=30"></script>
+    <script src="app.js?v=31"></script>
   </body>
 </html>

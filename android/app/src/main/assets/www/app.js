@@ -25,8 +25,10 @@
   const searchKeyboardToggle = document.getElementById("searchKeyboardToggle");
   const searchKeyboard = document.getElementById("searchKeyboard");
   const searchKeys = Array.from(document.querySelectorAll(".search-key"));
+  const searchStatus = document.getElementById("searchStatus");
   const clockNode = document.getElementById("clock");
   const dateNode = document.getElementById("todayDate");
+  const contentReviewedNode = document.getElementById("contentReviewed");
   const textSizeToggle = document.getElementById("textSizeToggle");
   const detailDialog = document.getElementById("detailDialog");
   const dialogTitle = document.getElementById("dialogTitle");
@@ -49,6 +51,7 @@
   };
 
   const checklistState = loadChecklistState();
+  let lastDialogTrigger = null;
 
   initClock();
   bindEvents();
@@ -88,6 +91,7 @@
       closeDialog.addEventListener("click", () => {
         if (typeof detailDialog?.close === "function") {
           detailDialog.close();
+          lastDialogTrigger?.focus?.();
         }
       });
     }
@@ -106,6 +110,7 @@
           event.clientX <= rect.left + rect.width;
         if (!clickedInDialog) {
           detailDialog.close();
+          lastDialogTrigger?.focus?.();
         }
       });
     }
@@ -116,18 +121,18 @@
       return;
     }
 
-    const setKeyboardLock = (locked) => {
-      searchInput.readOnly = locked;
-    };
+    const setKeyboardLock = () => {};
 
     const showKeyboard = () => {
       searchKeyboard.hidden = false;
       searchKeyboard.setAttribute("aria-hidden", "false");
+      searchKeyboardToggle.setAttribute("aria-expanded", "true");
     };
 
     const hideKeyboard = () => {
       searchKeyboard.hidden = true;
       searchKeyboard.setAttribute("aria-hidden", "true");
+      searchKeyboardToggle.setAttribute("aria-expanded", "false");
     };
 
     const toggleKeyboard = () => {
@@ -147,8 +152,6 @@
     };
 
     hideKeyboard();
-    setKeyboardLock(true);
-
     searchKeyboardToggle.addEventListener("click", toggleKeyboard);
 
     searchKeys.forEach((button) => {
@@ -221,6 +224,10 @@
 
     updateTime();
     setInterval(updateTime, 1000 * 20);
+    if (contentReviewedNode) {
+      const reviewed = window.COTTAGE_DATA?.content?.lastReviewed;
+      contentReviewedNode.textContent = reviewed ? formatShortDate(reviewed) : "Not set";
+    }
   }
 
   function initEventAutoRefresh() {
@@ -249,7 +256,13 @@
   }
 
   function setActiveTab() {
-    tabButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === state.tab));
+    tabButtons.forEach((btn) => {
+      const isActive = btn.dataset.tab === state.tab;
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", String(isActive));
+      btn.setAttribute("tabindex", isActive ? "0" : "-1");
+    });
   }
 
   function selectTab(tab, nextFilter = "All") {
@@ -325,40 +338,64 @@
 
     if (state.tab === "start") {
       renderStartHereCards();
+      announceSearchResults();
       return;
     }
 
     if (state.tab === "essentials") {
       renderEssentialsCards();
+      announceSearchResults();
       return;
     }
 
     if (state.tab === "events") {
       renderEventCards();
+      announceSearchResults();
       return;
     }
 
     if (state.tab === "businesses") {
       renderBusinessCards();
+      announceSearchResults();
       return;
     }
 
     if (state.tab === "rules") {
       renderRuleCards();
+      announceSearchResults();
       return;
     }
 
     if (state.tab === "tips") {
       renderTipCards();
+      announceSearchResults();
       return;
     }
 
     if (state.tab === "calendar") {
       renderCalendarCards();
+      announceSearchResults();
       return;
     }
 
     renderChecklistCards();
+    announceSearchResults();
+  }
+
+  function announceSearchResults() {
+    if (!searchStatus) {
+      return;
+    }
+
+    const count = contentArea.querySelectorAll(".card").length;
+    searchStatus.textContent = state.search
+      ? `${count} result${count === 1 ? "" : "s"} in ${getTabLabel(state.tab)}`
+      : `Showing ${getTabLabel(state.tab)}`;
+  }
+
+  function getTabLabel(tab) {
+    const button = tabButtons.find((item) => item.dataset.tab === tab);
+    return button?.textContent?.trim() || "this section";
   }
 
   function renderStartHereCards() {
@@ -393,7 +430,7 @@
     heroActionRow.append(
       makeButton("Essentials", () => selectTab("essentials"), "primary"),
       makeButton("Calendar", () => selectTab("calendar")),
-      makeAnchor("Call Host", `tel:${toDialablePhone(host.phone || "")}`)
+      makeButton("Need help?", () => selectTab("essentials", "Support"))
     );
 
     const quickContactRow = document.createElement("div");
@@ -1508,7 +1545,10 @@
     btn.type = "button";
     btn.className = `action-btn ${typeClass}`.trim();
     btn.textContent = label;
-    btn.addEventListener("click", () => onClick(btn));
+    btn.addEventListener("click", () => {
+      lastDialogTrigger = btn;
+      onClick(btn);
+    });
     return btn;
   }
 
@@ -1554,7 +1594,15 @@
     }
     if (detailDialog && typeof detailDialog.showModal === "function") {
       detailDialog.showModal();
+      requestAnimationFrame(() => dialogTitle?.focus?.());
     }
+  }
+
+  function formatShortDate(value) {
+    const parsed = new Date(`${value}T00:00:00`);
+    return Number.isNaN(parsed.getTime())
+      ? "Not set"
+      : parsed.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
   }
 
   function unique(values) {

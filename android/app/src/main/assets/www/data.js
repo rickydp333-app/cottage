@@ -1,4 +1,7 @@
 window.COTTAGE_DATA = {
+  content: {
+    lastReviewed: "2026-08-12"
+  },
   host: {
     name: "Rick",
     phone: "519 427 9922",
