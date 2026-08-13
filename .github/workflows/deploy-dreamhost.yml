@@ -25,7 +25,9 @@ jobs:
           DREAMHOST_PORT: ${{ secrets.DREAMHOST_PORT }}
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -p "${DREAMHOST_PORT:-22}" -H "$DREAMHOST_HOST" >> ~/.ssh/known_hosts
+          if [ -n "$DREAMHOST_HOST" ]; then
+            ssh-keyscan -p "${DREAMHOST_PORT:-22}" -H "$DREAMHOST_HOST" >> ~/.ssh/known_hosts
+          fi
 
       - name: Deploy website files to DreamHost
         env:
