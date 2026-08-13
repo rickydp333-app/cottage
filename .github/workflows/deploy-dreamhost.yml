@@ -46,4 +46,5 @@ jobs:
             service-worker.js \
             manifest.webmanifest \
             assets/ \
+            renterscottage/ \
             "$DREAMHOST_USER@$DREAMHOST_HOST:$DREAMHOST_WEB_ROOT/"

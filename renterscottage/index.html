@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#10212b" />
+    <title>Rental Availability</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="calendar-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Private rental calendar</p>
+          <h1 id="monthTitle">Availability</h1>
+        </div>
+        <div class="month-navigation" aria-label="Calendar month navigation">
+          <button id="previousMonthButton" type="button" aria-label="Previous month">Previous</button>
+          <input id="monthPicker" type="month" aria-label="Choose month and year" />
+          <button id="nextMonthButton" type="button" aria-label="Next month">Next</button>
+          <button id="todayButton" type="button">Today</button>
+        </div>
+        <div class="topbar-actions">
+          <span id="lastUpdated" class="freshness">Waiting for update</span>
+          <button id="manualBlockButton" type="button">Block days</button>
+          <button id="refreshButton" type="button">Refresh</button>
+        </div>
+      </header>
+
+      <section class="status-row" aria-live="polite">
+        <span id="connectionStatus" class="status-pill is-loading">Loading feeds...</span>
+        <span class="legend-item"><i class="legend-swatch airbnb"></i>Airbnb</span>
+        <span class="legend-item"><i class="legend-swatch vrbo"></i>VRBO</span>
+        <span class="legend-item"><i class="legend-swatch mixed"></i>Both sources</span>
+        <span class="legend-item"><i class="legend-swatch manual"></i>Direct booking</span>
+        <span class="legend-item"><i class="legend-swatch available"></i>Available</span>
+      </section>
+
+      <section id="calendar" class="calendar" aria-label="Rental availability calendar"></section>
+
+      <footer class="footer-row">
+        <span id="dataNote">Bookings are shown from the Airbnb and VRBO calendar feeds.</span>
+        <span id="nextRefresh"></span>
+      </footer>
+    </main>
+
+    <dialog id="bookingDialog" class="booking-dialog">
+      <form id="bookingForm" method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">Direct reservation</p>
+            <h2>Block rental dates</h2>
+          </div>
+          <button id="closeBookingButton" class="dialog-close" type="button" aria-label="Close">Close</button>
+        </div>
+        <p class="dialog-intro">Add a booking made directly with you. It will remain saved in this browser and appear on every matching month.</p>
+        <div class="form-grid">
+          <label>Start date<input id="bookingStart" type="date" required /></label>
+          <label>End date<input id="bookingEnd" type="date" required /></label>
+          <label class="wide-field">Renter name<input id="renterName" type="text" placeholder="Name" required /></label>
+          <label>Phone<input id="renterPhone" type="tel" placeholder="Optional" /></label>
+          <label>Email<input id="renterEmail" type="email" placeholder="Optional" /></label>
+          <label class="wide-field">Notes<textarea id="bookingNotes" rows="3" placeholder="Optional notes"></textarea></label>
+        </div>
+        <div id="bookingFormError" class="form-error" role="alert"></div>
+        <div class="dialog-actions">
+          <button id="cancelBookingButton" class="secondary-button" type="button">Cancel</button>
+          <button class="save-button" type="submit">Save direct booking</button>
+        </div>
+        <section class="saved-bookings">
+          <h3>Saved direct bookings</h3>
+          <div id="savedBookingsList"></div>
+        </section>
+      </form>
+    </dialog>
+
+    <dialog id="dateDetailsDialog" class="booking-dialog date-details-dialog">
+      <article>
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">Calendar details</p>
+            <h2 id="dateDetailsTitle">Date details</h2>
+          </div>
+          <button id="closeDateDetailsButton" class="dialog-close" type="button">Close</button>
+        </div>
+        <div id="dateDetailsBody" class="date-details-body"></div>
+      </article>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
