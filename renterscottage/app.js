@@ -48,7 +48,7 @@ async function loadCalendar() {
   }
 
   try {
-    const response = await fetch('./api.php', { cache: 'no-store' });
+    const response = await fetch(`./api.php?refresh=${Date.now()}`, { cache: 'no-store' });
     if (!response.ok) {
       throw new Error('Calendar feed request failed');
     }
