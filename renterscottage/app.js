@@ -96,9 +96,10 @@ function renderCalendar(events) {
   for (let day = 1; day <= daysInMonth; day += 1) {
     const cell = document.createElement('article');
     const date = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
-    const bookings = events.filter((event) => new Date(event.start) < addDays(date, 1) && new Date(event.end) > date);
-    const sources = [...new Set(bookings.map((booking) => booking.source))];
     const dateKey = toDateKey(date);
+    const nextDateKey = toDateKey(addDays(date, 1));
+    const bookings = events.filter((event) => event.start.slice(0, 10) < nextDateKey && event.end.slice(0, 10) > dateKey);
+    const sources = [...new Set(bookings.map((booking) => booking.source))];
     const directBookings = manualBookings.filter((booking) => dateKey >= booking.start && dateKey <= booking.end);
     const hasDirectBooking = directBookings.length > 0;
     const hasMixedSources = sources.length && (sources.length > 1 || hasDirectBooking);
