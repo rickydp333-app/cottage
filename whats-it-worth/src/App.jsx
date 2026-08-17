@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 
 const fileToDataUrl = (file) => new Promise((resolve, reject) => {
@@ -15,8 +15,23 @@ function App() {
   const [condition, setCondition] = useState('Good')
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [error, setError] = useState('')
   const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (!loading) {
+      setElapsedSeconds(0)
+      return undefined
+    }
+
+    const startedAt = Date.now()
+    const timer = window.setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000))
+    }, 250)
+
+    return () => window.clearInterval(timer)
+  }, [loading])
 
   const handleFile = (file) => {
     if (!file) return
@@ -71,7 +86,7 @@ function App() {
           </button>
           {image && <p className="file-name">{image.name}<button type="button" onClick={() => { setImage(null); setResult(null) }}>Remove</button></p>}
           <div className="controls"><label>Category<select value={category} onChange={(event) => setCategory(event.target.value)}><option>Auto-detect</option><option>Tool</option><option>Appliance</option><option>Electronics</option><option>Furniture</option><option>Collectible</option><option>Sporting equipment</option></select></label><label>Condition<select value={condition} onChange={(event) => setCondition(event.target.value)}><option>Like new</option><option>Good</option><option>Fair</option><option>For parts</option></select></label></div>
-          <button type="button" className="estimate-button" disabled={!image || loading} onClick={runEstimate}>{loading ? 'Reading the item…' : "Estimate what it's worth"} <span>→</span></button>
+          <button type="button" className="estimate-button" disabled={!image || loading} onClick={runEstimate}>{loading ? `Reading the item… ${elapsedSeconds}s` : "Estimate what it's worth"} <span>→</span></button>
           <p className="privacy-note">{error || 'Photos are sent securely only when you request a live appraisal.'}</p>
         </div>
 
