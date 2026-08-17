@@ -42,6 +42,10 @@ self.addEventListener("fetch", (event) => {
   }
 
   const path = requestUrl.pathname.toLowerCase();
+  if (path === "/wiw" || path.startsWith("/wiw/")) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
   const isAppShellRequest = APP_SHELL_SUFFIXES.some((suffix) => path === suffix || path.endsWith(suffix));
 
   if (path.endsWith("/data.private.js")) {
