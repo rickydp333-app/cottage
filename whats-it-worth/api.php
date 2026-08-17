@@ -4,9 +4,18 @@ header('Cache-Control: no-store');
 
 $apiKey = getenv('OPENAI_API_KEY');
 if (!$apiKey) {
-  $keyFile = '/home/dh_v7sia3/.openai_key';
-  if (is_readable($keyFile)) {
-    $apiKey = trim((string) file_get_contents($keyFile));
+  $keyFiles = array_filter([
+    getenv('HOME') ? rtrim(getenv('HOME'), '/') . '/.openai_key' : null,
+    '/home/dh_v7sia3/.openai_key',
+    dirname(__DIR__, 2) . '/.openai_key'
+  ]);
+  foreach ($keyFiles as $keyFile) {
+    if (is_readable($keyFile)) {
+      $apiKey = trim((string) file_get_contents($keyFile));
+      if ($apiKey !== '') {
+        break;
+      }
+    }
   }
 }
 $input = json_decode(file_get_contents('php://input'), true);
@@ -60,5 +69,17 @@ if (!is_array($result)) {
   echo json_encode(['error' => 'The appraisal response was not valid JSON.']);
   exit;
 }
+
+$result['confidence'] = max(0, min(100, (float) ($result['confidence'] ?? 0) * ((float) ($result['confidence'] ?? 0) <= 1 ? 100 : 1)));
+$result['newPrice'] = max(0, (float) ($result['newPrice'] ?? 0));
+$result['usedLow'] = max(0, (float) ($result['usedLow'] ?? 0));
+$result['usedHigh'] = max($result['usedLow'], (float) ($result['usedHigh'] ?? 0));
+$result['quickSale'] = max(0, min($result['usedLow'], (float) ($result['quickSale'] ?? 0)));
+$result['suggested'] = max($result['quickSale'], min($result['usedHigh'], (float) ($result['suggested'] ?? 0)));
+$result['newPrice'] = round($result['newPrice']);
+$result['usedLow'] = round($result['usedLow']);
+$result['usedHigh'] = round($result['usedHigh']);
+$result['quickSale'] = round($result['quickSale']);
+$result['suggested'] = round($result['suggested']);
 
 echo json_encode($result);

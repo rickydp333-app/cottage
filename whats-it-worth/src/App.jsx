@@ -75,7 +75,7 @@ function App() {
           {!result ? <div className="empty-result"><div className="target-icon">◎</div><p className="kicker">Your appraisal</p><h2>Waiting for<br /><i>something interesting.</i></h2><p>We’ll identify the object, account for its condition, and turn the guesswork into a useful selling number.</p></div> : <div className="result-content"><div className="result-top"><div><p className="kicker">Your appraisal</p><h2>{result.title}</h2><span className="category-label">{result.category} · {result.condition}</span></div><div className="confidence"><strong>{result.confidence}%</strong><span>confidence</span></div></div><div className="price-grid"><div><span>New price</span><strong>${result.newPrice}</strong></div><div><span>Typical used</span><strong>${result.usedLow}–${result.usedHigh}</strong></div><div className="quick"><span>Quick-sale price</span><strong>${result.quickSale}</strong></div><div className="suggested"><span>Suggested listing</span><strong>${result.suggested}</strong></div></div><div className="result-note"><strong>Why this number?</strong><p>{result.note}</p></div><button type="button" className="listing-button" onClick={copyListing}>{copied ? 'Listing draft copied' : 'Copy listing draft'} <span>↗</span></button></div>}
         </div>
       </section>
-      <footer><span>Built for the things collecting dust in your garage.</span><span>Demo mode · estimates are directional, not guarantees.</span></footer>
+      <footer><span>Built for the things collecting dust in your garage.</span><span>AI estimates are directional, not guarantees.</span></footer>
     </main>
   )
 }
