@@ -32,7 +32,9 @@ function App() {
     try {
       const response = await fetch('/wiw/api.php', { method: 'POST', body: JSON.stringify({ image: await fileToDataUrl(inputRef.current.files[0]), category, condition }), headers: { 'Content-Type': 'application/json' } })
       if (!response.ok) throw new Error('Live appraisal is not configured yet.')
-      setResult(await response.json())
+      const liveResult = await response.json()
+      const confidence = Number(liveResult.confidence)
+      setResult({ ...liveResult, confidence: confidence > 0 && confidence <= 1 ? confidence * 100 : confidence })
     } catch (requestError) {
       setError(requestError.message)
       setResult(null)
