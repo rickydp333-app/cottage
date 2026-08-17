@@ -8,6 +8,23 @@ const fileToDataUrl = (file) => new Promise((resolve, reject) => {
   reader.readAsDataURL(file)
 })
 
+const prepareImage = async (file) => {
+  const source = await fileToDataUrl(file)
+  const image = new Image()
+  image.src = source
+  await new Promise((resolve, reject) => {
+    image.onload = resolve
+    image.onerror = reject
+  })
+
+  const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
+  canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height)
+  return canvas.toDataURL('image/jpeg', 0.82)
+}
+
 function App() {
   const [image, setImage] = useState(null)
   const [result, setResult] = useState(null)
@@ -46,7 +63,7 @@ function App() {
     setError('')
     setCopied(false)
     try {
-      const response = await fetch('/wiw/api.php', { method: 'POST', body: JSON.stringify({ image: await fileToDataUrl(image.file), category, condition }), headers: { 'Content-Type': 'application/json' } })
+      const response = await fetch('/wiw/api.php', { method: 'POST', body: JSON.stringify({ image: await prepareImage(image.file), category, condition }), headers: { 'Content-Type': 'application/json' } })
       if (!response.ok) {
         const details = await response.json().catch(() => ({}))
         throw new Error(details.error || `Appraisal request failed (${response.status}).`)
