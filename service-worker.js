@@ -1,9 +1,9 @@
-const CACHE_NAME = "cottage-info-v31";
+const CACHE_NAME = "cottage-info-v32";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=31",
-  "./app.js?v=31",
+  "./app.js?v=32",
   "./data.js?v=31",
   "./manifest.webmanifest",
   "./assets/logo.jpg"
