@@ -3,6 +3,12 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
 $apiKey = getenv('OPENAI_API_KEY');
+if (!$apiKey) {
+  $keyFile = '/home/dh_v7sia3/.openai_key';
+  if (is_readable($keyFile)) {
+    $apiKey = trim((string) file_get_contents($keyFile));
+  }
+}
 $input = json_decode(file_get_contents('php://input'), true);
 $image = $input['image'] ?? '';
 $category = $input['category'] ?? 'Auto-detect';
