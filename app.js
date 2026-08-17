@@ -1378,52 +1378,27 @@
     }
 
     try {
-      const validSources = (config.sources || []).filter((source) => {
-        const url = String(source?.url || "").trim();
-        return /^https?:\/\//i.test(url) && !url.includes("PASTE_");
-      });
-
-      if (!validSources.length) {
-        calendarState.items = [];
-        calendarState.loaded = true;
-        calendarState.error = "Add your Airbnb and VRBO iCal URLs in data.js under calendar.sources.";
-        calendarState.sourceStatuses = buildCalendarSourceStatuses(config.sources || [], false, "Missing or invalid URL.");
-        return;
+      const response = await fetch(`renterscottage/api.php?refresh=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Calendar proxy request failed.");
       }
 
-      const results = await Promise.allSettled(
-        validSources.map(async (source) => {
-          const text = await fetchCalendarText(String(source.url), config.fetchStrategies || []);
-          const events = parseIcsEvents(text).map((event) => ({
-            source: source.name || "Calendar",
-            summary: event.summary || "Reserved",
-            start: event.start,
-            end: event.end
-          }));
-          return events;
-        })
-      );
+      const data = await response.json();
+      calendarState.sourceStatuses = (data.sources || []).map((source) => ({
+        name: source.source || "Calendar",
+        ok: Boolean(source.ok),
+        message: source.ok
+          ? `${(source.events || []).length} event${(source.events || []).length === 1 ? "" : "s"} loaded.`
+          : "Feed failed to load."
+      }));
 
-      calendarState.sourceStatuses = validSources.map((source, index) => {
-        const result = results[index];
-        if (result.status === "fulfilled") {
-          return {
-            name: source.name || "Calendar",
-            ok: true,
-            message: `${result.value.length} event${result.value.length === 1 ? "" : "s"} loaded.`
-          };
-        }
-
-        return {
-          name: source.name || "Calendar",
-          ok: false,
-          message: result.reason instanceof Error ? result.reason.message : "Feed failed to load."
-        };
-      });
-
-      const loadedEvents = results
-        .filter((result) => result.status === "fulfilled")
-        .flatMap((result) => result.value)
+      const loadedEvents = (data.sources || [])
+        .flatMap((source) => (source.events || []).map((event) => ({
+          source: source.source || "Calendar",
+          summary: event.summary || "Reserved",
+          start: new Date(event.start),
+          end: new Date(event.end)
+        })))
         .filter((item) => item.start instanceof Date && item.end instanceof Date && item.end.getTime() > item.start.getTime())
         .sort((left, right) => left.start.getTime() - right.start.getTime());
 
