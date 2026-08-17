@@ -1,19 +1,6 @@
 import { useRef, useState } from 'react'
 import './App.css'
 
-const demoResult = {
-  title: 'DeWalt 20V Max cordless drill kit',
-  category: 'Power tool',
-  confidence: 92,
-  condition: 'Good used condition',
-  newPrice: 199,
-  usedLow: 75,
-  usedHigh: 115,
-  quickSale: 65,
-  suggested: 99,
-  note: 'The charger and two batteries add meaningful value. Scuffs are normal for this category, but missing accessories would pull the price down.'
-}
-
 const fileToDataUrl = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader()
   reader.onload = () => resolve(reader.result)
@@ -48,7 +35,7 @@ function App() {
       setResult(await response.json())
     } catch (requestError) {
       setError(requestError.message)
-      setResult({ ...demoResult, condition: `${condition} used condition` })
+      setResult(null)
     } finally { setLoading(false) }
   }
   const copyListing = async () => {
