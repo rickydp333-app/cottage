@@ -14,12 +14,21 @@ const demoResult = {
   note: 'The charger and two batteries add meaningful value. Scuffs are normal for this category, but missing accessories would pull the price down.'
 }
 
+const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => resolve(reader.result)
+  reader.onerror = reject
+  reader.readAsDataURL(file)
+})
+
 function App() {
   const [image, setImage] = useState(null)
   const [result, setResult] = useState(null)
   const [category, setCategory] = useState('Auto-detect')
   const [condition, setCondition] = useState('Good')
   const [copied, setCopied] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const inputRef = useRef(null)
 
   const handleFile = (file) => {
@@ -28,7 +37,20 @@ function App() {
     setResult(null)
   }
 
-  const runEstimate = () => { setResult({ ...demoResult, condition: `${condition} used condition` }); setCopied(false) }
+  const runEstimate = async () => {
+    if (!image) return
+    setLoading(true)
+    setError('')
+    setCopied(false)
+    try {
+      const response = await fetch('/wiw/api.php', { method: 'POST', body: JSON.stringify({ image: await fileToDataUrl(inputRef.current.files[0]), category, condition }), headers: { 'Content-Type': 'application/json' } })
+      if (!response.ok) throw new Error('Live appraisal is not configured yet.')
+      setResult(await response.json())
+    } catch (requestError) {
+      setError(requestError.message)
+      setResult({ ...demoResult, condition: `${condition} used condition` })
+    } finally { setLoading(false) }
+  }
   const copyListing = async () => {
     if (!result) return
     await navigator.clipboard?.writeText(`${result.title}\n\n${result.condition}. Priced at $${result.suggested}. Message for details.`)
@@ -56,8 +78,8 @@ function App() {
           </button>
           {image && <p className="file-name">{image.name}<button type="button" onClick={() => { setImage(null); setResult(null) }}>Remove</button></p>}
           <div className="controls"><label>Category<select value={category} onChange={(event) => setCategory(event.target.value)}><option>Auto-detect</option><option>Tool</option><option>Appliance</option><option>Electronics</option><option>Furniture</option><option>Collectible</option><option>Sporting equipment</option></select></label><label>Condition<select value={condition} onChange={(event) => setCondition(event.target.value)}><option>Like new</option><option>Good</option><option>Fair</option><option>For parts</option></select></label></div>
-          <button type="button" className="estimate-button" disabled={!image} onClick={runEstimate}>Estimate what it's worth <span>→</span></button>
-          <p className="privacy-note">Your photo stays in this browser for now. Nothing is uploaded.</p>
+          <button type="button" className="estimate-button" disabled={!image || loading} onClick={runEstimate}>{loading ? 'Reading the item…' : "Estimate what it's worth"} <span>→</span></button>
+          <p className="privacy-note">{error || 'Photos are sent securely only when you request a live appraisal.'}</p>
         </div>
 
         <div className={`result-panel ${result ? 'is-ready' : ''}`}>
