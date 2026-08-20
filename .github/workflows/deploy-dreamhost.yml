@@ -39,11 +39,11 @@ jobs:
           test -n "$DREAMHOST_HOST"
           test -n "$DREAMHOST_USER"
           test -n "$DREAMHOST_WEB_ROOT"
-          ssh -o BatchMode=yes -o IdentitiesOnly=yes -p "${DREAMHOST_PORT:-22}" \
+          ssh -o BatchMode=yes -p "${DREAMHOST_PORT:-22}" \
             "$DREAMHOST_USER@$DREAMHOST_HOST" \
             "test -d '$DREAMHOST_WEB_ROOT'"
           rsync -avz --delete \
-            -e "ssh -p ${DREAMHOST_PORT:-22} -o IdentitiesOnly=yes" \
+            -e "ssh -p ${DREAMHOST_PORT:-22}" \
             index.html \
             app.js \
             data.js \
