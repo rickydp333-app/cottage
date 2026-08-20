@@ -32,6 +32,8 @@ Add these repository secrets:
 
 5. `DREAMHOST_SSH_KEY`
 	- A private SSH key with access to that DreamHost account
+	- Paste the **entire** key content including the `-----BEGIN ... PRIVATE KEY-----` and `-----END ... PRIVATE KEY-----` header lines
+	- The key must preserve its original line breaks (do not convert it to a single line)
 
 ## What Gets Deployed
 

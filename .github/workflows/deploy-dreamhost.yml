@@ -14,6 +14,29 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Validate required secrets
+        env:
+          DREAMHOST_SSH_KEY: ${{ secrets.DREAMHOST_SSH_KEY }}
+          DREAMHOST_HOST: ${{ secrets.DREAMHOST_HOST }}
+          DREAMHOST_USER: ${{ secrets.DREAMHOST_USER }}
+          DREAMHOST_WEB_ROOT: ${{ secrets.DREAMHOST_WEB_ROOT }}
+        run: |
+          missing=()
+          [ -z "$DREAMHOST_SSH_KEY" ]   && missing+=("DREAMHOST_SSH_KEY")
+          [ -z "$DREAMHOST_HOST" ]      && missing+=("DREAMHOST_HOST")
+          [ -z "$DREAMHOST_USER" ]      && missing+=("DREAMHOST_USER")
+          [ -z "$DREAMHOST_WEB_ROOT" ]  && missing+=("DREAMHOST_WEB_ROOT")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "##[error]The following required secrets are not set: ${missing[*]}"
+            echo "Please add them under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if ! echo "$DREAMHOST_SSH_KEY" | grep -qE "^-----BEGIN .* PRIVATE KEY-----"; then
+            echo "##[error]DREAMHOST_SSH_KEY does not appear to be a valid PEM private key."
+            echo "Ensure the secret contains the full key including the BEGIN/END header lines."
+            exit 1
+          fi
+
       - name: Start SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
