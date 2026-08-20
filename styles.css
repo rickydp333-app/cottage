@@ -1141,7 +1141,21 @@ input:focus-visible {
 
   .hero-contact {
     display: grid;
-    gap: 6px;
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .hero-contact-separator {
+    display: none;
+  }
+
+  .hero-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-meta .meta-card:nth-child(3),
+  .hero-meta .meta-button {
+    grid-column: 1 / -1;
   }
 
   .search-input-row {
