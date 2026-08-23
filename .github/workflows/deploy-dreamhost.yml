@@ -14,6 +14,17 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build whats-it-worth app
+        run: |
+          cd whats-it-worth
+          npm ci
+          npm run build
+
       - name: Start SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -53,3 +64,7 @@ jobs:
             assets/ \
             renterscottage \
             "$DREAMHOST_USER@$DREAMHOST_HOST:$DREAMHOST_WEB_ROOT/"
+          rsync -avz --delete \
+            -e "ssh -p ${DREAMHOST_PORT:-22}" \
+            whats-it-worth/dist/ \
+            "$DREAMHOST_USER@$DREAMHOST_HOST:$DREAMHOST_WEB_ROOT/wiw/"
