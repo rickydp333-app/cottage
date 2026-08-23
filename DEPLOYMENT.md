@@ -33,17 +33,17 @@ Add these repository secrets:
 5. `DREAMHOST_SSH_KEY`
 	- A private SSH key with access to that DreamHost account
 
+6. `DREAMHOST_OPENAI_KEY` (Optional, only if deploying whats-it-worth app)
+	- Your OpenAI API key for the AI appraisal feature
+	- Note: This should also be set on the server in `~/.openai_key`
+
 ## What Gets Deployed
 
-The workflow deploys only the live website files:
+The workflow deploys the live website files:
 
-- `index.html`
-- `app.js`
-- `data.js`
-- `styles.css`
-- `service-worker.js`
-- `manifest.webmanifest`
-- `assets/`
+- Main site files: `index.html`, `app.js`, `data.js`, `styles.css`, `service-worker.js`, `manifest.webmanifest`, `assets/`
+- renterscottage calendar app (all files)
+- whats-it-worth app (built dist/ and api.php)
 
 ## How Updates Work
 
@@ -57,3 +57,17 @@ The workflow deploys only the live website files:
 You can also run the workflow manually from GitHub:
 
 - `Actions` > `Deploy to DreamHost` > `Run workflow`
+
+## whats-it-worth App Setup
+
+The whats-it-worth app at `/wiw/` is a React app that provides AI-powered item appraisals.
+
+### Server Configuration
+
+The app requires an OpenAI API key on the DreamHost server:
+
+1. SSH into your DreamHost account
+2. Create a file `~/.openai_key` containing your OpenAI API key
+3. Ensure it's readable by your web server user
+
+The app will automatically detect and use this key when handling appraisal requests at `/wiw/api.php`.

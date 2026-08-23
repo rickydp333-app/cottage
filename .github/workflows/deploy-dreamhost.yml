@@ -24,6 +24,7 @@ jobs:
           cd whats-it-worth
           npm ci
           npm run build
+          cp api.php dist/
 
       - name: Start SSH agent
         uses: webfactory/ssh-agent@v0.9.0
