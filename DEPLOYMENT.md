@@ -61,12 +61,12 @@ The main site includes `spotify-api.php`, which keeps Spotify credentials on Dre
 return [
 	'client_id' => 'SPOTIFY_CLIENT_ID',
 	'client_secret' => 'SPOTIFY_CLIENT_SECRET',
-	'refresh_token' => 'SPOTIFY_REFRESH_TOKEN',
+	'redirect_uri' => 'https://rdpsplace.me/spotify-api.php?action=callback',
 	'playlist_uri' => 'spotify:playlist:4pVircYHKLwc4f5mhZgadW'
 ];
 ```
 
-The refresh token must be authorized for the dedicated Spotify Premium account with the minimum playback scopes needed by the proxy: `user-read-playback-state`, `user-modify-playback-state`, and `user-read-currently-playing`. The client secret and refresh token must never be committed or placed in the website assets.
+Then visit `https://rdpsplace.me/spotify-api.php?action=authorize` while signed in as the dedicated Spotify Premium account. The callback stores the refresh token in the same private file. The client secret and refresh token must never be committed or placed in the website assets.
 
 ## Manual Trigger
 
