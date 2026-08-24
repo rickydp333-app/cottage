@@ -76,6 +76,10 @@ window.COTTAGE_DATA = {
     network: "LPCasa5",
     password: "SET_IN_PRIVATE_CONFIG"
   },
+  spotify: {
+    playlistUrl: "SET_IN_PRIVATE_CONFIG",
+    speakers: []
+  },
   calendar: {
     refreshMinutes: 30,
     bookingWindowDays: 180,

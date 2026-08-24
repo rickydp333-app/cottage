@@ -498,6 +498,7 @@
 
     heroTop.append(heroCopy, heroStats, heroPanel);
     heroBlock.appendChild(heroTop);
+    renderSpotifyPlayer();
 
     const featuredHighlight = window.COTTAGE_DATA.businessHighlights?.[0];
     const featuredBusinesses = getBusinessesByIds(featuredHighlight?.businessIds || []);
@@ -704,6 +705,84 @@
       groupBlock.append(heading, intro, cardsArea, footerRow);
       contentArea.appendChild(groupBlock);
     }
+  }
+
+  function renderSpotifyPlayer() {
+    const spotify = window.COTTAGE_DATA.spotify || {};
+    const playlistUrl = typeof spotify.playlistUrl === "string" ? spotify.playlistUrl.trim() : "";
+    const speakers = Array.isArray(spotify.speakers) ? spotify.speakers.filter(Boolean) : [];
+    const isConfigured = /^https:\/\/open\.spotify\.com\/(playlist|album)\//i.test(playlistUrl);
+    const block = document.createElement("section");
+    block.className = "spotify-block";
+
+    const header = document.createElement("div");
+    header.className = "spotify-header";
+
+    const eyebrow = document.createElement("span");
+    eyebrow.className = "spotify-eyebrow";
+    eyebrow.textContent = "Cottage Soundtrack";
+
+    const title = document.createElement("h3");
+    title.textContent = "Play music around the cottage";
+
+    const summary = document.createElement("p");
+    summary.textContent = isConfigured
+      ? "Choose a room, then open the playlist in Spotify to play it on that speaker."
+      : "Add the cottage Spotify playlist in private configuration to turn on the player.";
+    header.append(eyebrow, title, summary);
+
+    if (!isConfigured) {
+      block.append(header);
+      contentArea.appendChild(block);
+      return;
+    }
+
+    const embed = document.createElement("iframe");
+    embed.className = "spotify-embed";
+    embed.title = "Cottage Spotify playlist";
+    const embedUrl = playlistUrl.replace("open.spotify.com/", "open.spotify.com/embed/");
+    embed.src = `${embedUrl}${embedUrl.includes("?") ? "&" : "?"}utm_source=cottage-info`;
+    embed.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+    embed.loading = "lazy";
+
+    const controls = document.createElement("div");
+    controls.className = "spotify-controls";
+
+    const controlsTitle = document.createElement("strong");
+    controlsTitle.textContent = "Send playback to";
+    controls.appendChild(controlsTitle);
+
+    const selectedSpeakerKey = "cottage-spotify-speaker";
+    const savedSpeaker = localStorage.getItem(selectedSpeakerKey) || speakers[0] || "";
+    const status = document.createElement("p");
+    status.className = "spotify-speaker-status";
+
+    speakers.forEach((speaker) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "spotify-speaker";
+      button.textContent = speaker;
+      button.setAttribute("aria-pressed", String(speaker === savedSpeaker));
+      button.addEventListener("click", () => {
+        localStorage.setItem(selectedSpeakerKey, speaker);
+        controls.querySelectorAll(".spotify-speaker").forEach((item) => {
+          item.setAttribute("aria-pressed", String(item === button));
+        });
+        status.textContent = `${speaker} selected. Open Spotify and choose this device from Spotify Connect.`;
+      });
+      controls.appendChild(button);
+    });
+
+    status.textContent = savedSpeaker
+      ? `${savedSpeaker} selected. Open Spotify and choose this device from Spotify Connect.`
+      : "Choose a speaker, then open Spotify Connect on your phone.";
+
+    const openSpotify = makeAnchor("Open in Spotify", playlistUrl, "primary");
+    openSpotify.target = "_blank";
+    openSpotify.rel = "noopener noreferrer";
+    controls.append(status, openSpotify);
+    block.append(header, embed, controls);
+    contentArea.appendChild(block);
   }
 
   function renderEssentialsCards() {
