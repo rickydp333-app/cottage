@@ -59,6 +59,7 @@ jobs:
             index.html \
             app.js \
             data.js \
+            spotify-api.php \
             styles.css \
             service-worker.js \
             manifest.webmanifest \

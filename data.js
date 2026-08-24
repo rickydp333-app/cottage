@@ -78,6 +78,7 @@ window.COTTAGE_DATA = {
   },
   spotify: {
     playlistUrl: "https://open.spotify.com/playlist/4pVircYHKLwc4f5mhZgadW?si=c803555d0cf7421c",
+    apiEndpoint: "spotify-api.php",
     speakers: [
       "Living Room",
       "Kitchen",

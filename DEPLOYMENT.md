@@ -52,6 +52,22 @@ The workflow deploys the live website files:
 3. Push to `main`
 4. GitHub Actions deploys the updated site to DreamHost automatically
 
+## Spotify Speaker Control Setup
+
+The main site includes `spotify-api.php`, which keeps Spotify credentials on DreamHost and exposes only speaker names and playback actions to guests. Create `~/.spotify_cottage_config.php` on DreamHost with PHP-readable permissions:
+
+```php
+<?php
+return [
+	'client_id' => 'SPOTIFY_CLIENT_ID',
+	'client_secret' => 'SPOTIFY_CLIENT_SECRET',
+	'refresh_token' => 'SPOTIFY_REFRESH_TOKEN',
+	'playlist_uri' => 'spotify:playlist:4pVircYHKLwc4f5mhZgadW'
+];
+```
+
+The refresh token must be authorized for the dedicated Spotify Premium account with the minimum playback scopes needed by the proxy: `user-read-playback-state`, `user-modify-playback-state`, and `user-read-currently-playing`. The client secret and refresh token must never be committed or placed in the website assets.
+
 ## Manual Trigger
 
 You can also run the workflow manually from GitHub:

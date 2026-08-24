@@ -757,7 +757,7 @@
     const status = document.createElement("p");
     status.className = "spotify-speaker-status";
 
-    speakers.forEach((speaker) => {
+    const addSpeakerButton = (speaker) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "spotify-speaker";
@@ -768,13 +768,45 @@
         controls.querySelectorAll(".spotify-speaker").forEach((item) => {
           item.setAttribute("aria-pressed", String(item === button));
         });
-        status.textContent = `${speaker} selected. Open Spotify and choose this device from Spotify Connect.`;
+        status.textContent = `${speaker} selected. Connecting to Spotify...`;
+        if (spotify.apiEndpoint) {
+          fetch(`${spotify.apiEndpoint}?action=transfer`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceName: speaker })
+          })
+            .then((response) => response.json().then((result) => ({ ok: response.ok, result })))
+            .then(({ ok, result }) => {
+              status.textContent = ok
+                ? `${speaker} is ready. Use the Spotify player to start music.`
+                : (result.error || `${speaker} is not available right now.`);
+            })
+            .catch(() => {
+              status.textContent = `${speaker} selected. Open Spotify Connect to finish connecting.`;
+            });
+        }
       });
       controls.appendChild(button);
-    });
+    };
+
+    speakers.forEach(addSpeakerButton);
+
+    if (spotify.apiEndpoint) {
+      fetch(`${spotify.apiEndpoint}?action=devices`)
+        .then((response) => response.json().then((result) => ({ ok: response.ok, result })))
+        .then(({ ok, result }) => {
+          if (!ok || !Array.isArray(result.devices) || !result.devices.length) {
+            return;
+          }
+          controls.querySelectorAll(".spotify-speaker").forEach((button) => button.remove());
+          result.devices.forEach((device) => addSpeakerButton(device.name));
+          status.textContent = `${result.devices.length} available Spotify speaker${result.devices.length === 1 ? "" : "s"} found.`;
+        })
+        .catch(() => {});
+    }
 
     status.textContent = savedSpeaker
-      ? `${savedSpeaker} selected. Open Spotify and choose this device from Spotify Connect.`
+      ? `${savedSpeaker} selected. Choose a speaker to connect it through Spotify.`
       : "Choose a speaker, then open Spotify Connect on your phone.";
 
     const openSpotify = makeAnchor("Open in Spotify", playlistUrl, "primary");
