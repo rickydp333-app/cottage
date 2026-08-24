@@ -77,8 +77,12 @@ window.COTTAGE_DATA = {
     password: "SET_IN_PRIVATE_CONFIG"
   },
   spotify: {
-    playlistUrl: "SET_IN_PRIVATE_CONFIG",
-    speakers: []
+    playlistUrl: "https://open.spotify.com/playlist/4pVircYHKLwc4f5mhZgadW?si=c803555d0cf7421c",
+    speakers: [
+      "Living Room",
+      "Kitchen",
+      "Deck"
+    ]
   },
   calendar: {
     refreshMinutes: 30,
