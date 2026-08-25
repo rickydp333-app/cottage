@@ -53,7 +53,7 @@ jobs:
           test -n "$DREAMHOST_WEB_ROOT"
           ssh -o BatchMode=yes -p "${DREAMHOST_PORT:-22}" \
             "$DREAMHOST_USER@$DREAMHOST_HOST" \
-            "test -d '$DREAMHOST_WEB_ROOT'"
+            "test -d '$DREAMHOST_WEB_ROOT' && mkdir -p '$DREAMHOST_WEB_ROOT/assets'"
           rsync -avz --delete \
             -e "ssh -p ${DREAMHOST_PORT:-22}" \
             index.html \
@@ -63,9 +63,12 @@ jobs:
             styles.css \
             service-worker.js \
             manifest.webmanifest \
-            assets/ \
             renterscottage \
             "$DREAMHOST_USER@$DREAMHOST_HOST:$DREAMHOST_WEB_ROOT/"
+          rsync -avz \
+            -e "ssh -p ${DREAMHOST_PORT:-22}" \
+            assets/logo.jpg \
+            "$DREAMHOST_USER@$DREAMHOST_HOST:$DREAMHOST_WEB_ROOT/assets/logo.jpg"
           rsync -avz --delete \
             -e "ssh -p ${DREAMHOST_PORT:-22}" \
             whats-it-worth/dist/ \
