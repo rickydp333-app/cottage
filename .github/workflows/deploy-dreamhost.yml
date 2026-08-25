@@ -55,7 +55,7 @@ jobs:
             "$DREAMHOST_USER@$DREAMHOST_HOST" \
             "test -d '$DREAMHOST_WEB_ROOT' && mkdir -p '$DREAMHOST_WEB_ROOT/assets'"
           rsync -avz --delete \
-            -e "ssh -p ${DREAMHOST_PORT:-22}" \
+            -e "ssh -p ${DREAMHOST_PORT:-22} -o IdentitiesOnly=yes" \
             index.html \
             app.js \
             data.js \
