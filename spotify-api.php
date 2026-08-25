@@ -106,7 +106,13 @@ function getAccessToken($config) {
 }
 
 function getConfigPath() {
-  return getenv('COTTAGE_SPOTIFY_CONFIG') ?: ($_SERVER['HOME'] ?? '') . '/.spotify_cottage_config.php';
+  $configuredPath = getenv('COTTAGE_SPOTIFY_CONFIG');
+  if ($configuredPath) {
+    return $configuredPath;
+  }
+
+  $homeDirectory = $_SERVER['HOME'] ?? getenv('HOME') ?: '/home/dh_v7sia3';
+  return rtrim($homeDirectory, '/') . '/.spotify_cottage_config.php';
 }
 
 function loadConfig() {
