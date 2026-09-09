@@ -1,0 +1,60 @@
+(() => {
+  const bar = document.createElement('nav');
+  bar.className = 'rdp-kiosk-bar';
+  bar.setAttribute('aria-label', 'RDPs Place navigation');
+  bar.innerHTML = `<a href="/">Home</a><button type="button" data-back>Back</button><button type="button" data-fullscreen>Full Screen</button><button type="button" data-install>Install App</button><span role="status"></span>`;
+  document.body.prepend(bar);
+  const status = bar.querySelector('[role=status]');
+  const full = bar.querySelector('[data-fullscreen]');
+  const install = bar.querySelector('[data-install]');
+  bar.querySelector('[data-back]').onclick = () => {
+    if (document.referrer && new URL(document.referrer).origin === location.origin && history.length > 1) history.back();
+    else location.assign('/');
+  };
+  full.hidden = !document.fullscreenEnabled;
+  full.onclick = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch { status.textContent = 'Full screen is unavailable. Open the installed app or use your kiosk browser.'; }
+  };
+  document.addEventListener('fullscreenchange', () => { full.textContent = document.fullscreenElement ? 'Exit Full Screen' : 'Full Screen'; });
+  let installPrompt;
+  install.hidden = navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches;
+  window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installPrompt = event; install.hidden = false; });
+  window.addEventListener('appinstalled', () => { install.hidden = true; installPrompt = null; });
+  install.onclick = async () => {
+    if (!installPrompt) { status.textContent = 'Use your browser menu to install RDPs Place or Add to Home Screen, then launch its icon.'; return; }
+    const prompt = installPrompt;
+    installPrompt = null;
+    try { await prompt.prompt(); await prompt.userChoice; } catch { status.textContent = 'Use your browser menu to install the app.'; }
+  };
+  const dialog = document.createElement('dialog');
+  dialog.className = 'rdp-external-dialog';
+  dialog.setAttribute('aria-label', 'External website');
+  dialog.innerHTML = '<p role="status"></p><button type="button">Close / Back to RDPs Place</button>';
+  document.body.append(dialog);
+  let popup = null;
+  let trigger = null;
+  dialog.querySelector('button').onclick = () => dialog.close();
+  dialog.addEventListener('close', () => { try { popup?.close(); } catch {} popup = null; trigger?.focus(); });
+  document.addEventListener('click', event => {
+    const link = event.target.closest?.('a[href]');
+    if (!link || event.defaultPrevented || link.hasAttribute('download') || event.button !== 0) return;
+    const url = new URL(link.href, location.href);
+    if (!['http:', 'https:'].includes(url.protocol)) return;
+    if (url.origin === location.origin) { link.target = '_self'; return; }
+    event.preventDefault();
+    trigger = link;
+    try {
+      popup?.close();
+      popup = window.open('about:blank', '_blank', 'popup,width=1100,height=800');
+      if (popup) { popup.opener = null; popup.location.replace(url.href); }
+    } catch { popup = null; }
+    dialog.querySelector('p').textContent = popup
+      ? 'The website opened in a separate window. Close that window to return, or use the button below. Your browser may show its address.'
+      : 'Your browser blocked the window. Allow popups for RDPs Place and tap the link again.';
+    if (!dialog.open) dialog.showModal();
+  });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+})();

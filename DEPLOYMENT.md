@@ -87,3 +87,15 @@ The app requires an OpenAI API key on the DreamHost server:
 3. Ensure it's readable by your web server user
 
 The app will automatically detect and use this key when handling appraisal requests at `/wiw/api.php`.
+
+## Full-screen / PWA kiosk
+
+Install RDPs Place using Install App (or the browser's Install/Add to Home Screen menu), then launch its icon. The manifest requests fullscreen with standalone fallback. Home, Back, and Full Screen controls are shared by the guide, `/renterscottage/`, and `/wiw/`. The existing route is `/renterscottage/`, not `/rentercottage/`.
+
+Internal links stay in the app. External HTTP(S) links open a separate popup with its opener removed; the original page provides Close / Back to RDPs Place and explains blocked popups. Closing that prompt attempts to close the external window; browsers may require closing the external window manually. Telephone, email, downloads, and embedded Spotify controls retain their existing behavior. Cross-origin redirects and content inside external frames remain controlled by that site's browser context. Browser security may show the external address, and a Close control cannot be inserted into someone else's page.
+
+For a locked device, configure Windows Assigned Access/Edge kiosk or Samsung Knox's web kiosk with `https://rdpsplace.me/` as the start URL and an appropriate destination allowlist. Fullscreen/PWA alone does not disable OS shortcuts or prevent exiting. Device policies must be configured on the actual kiosk; this repository change does not change device settings.
+
+The service worker caches only public guide assets. Booking/appraisal pages show an offline notice when unreachable; API responses and private configuration are not stored by the worker. Deployment includes the shared controls, offline page, and correctly sized PNG icons. No Android packaged assets are changed by this website release.
+
+Validation: JavaScript syntax checks, production Vite build, and browser checks for mobile layout, same-window internal links, install guidance, blocked popups, return controls, offline guide/subpage behavior, and cache exclusions.

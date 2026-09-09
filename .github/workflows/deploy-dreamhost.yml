@@ -63,12 +63,17 @@ jobs:
             styles.css \
             service-worker.js \
             manifest.webmanifest \
+            kiosk.js \
+            kiosk.css \
+            offline.html \
             renterscottage \
             "$DREAMHOST_USER@$DREAMHOST_HOST:$DREAMHOST_WEB_ROOT/"
           rsync -avz \
             -e "ssh -p ${DREAMHOST_PORT:-22}" \
             assets/logo.jpg \
-            "$DREAMHOST_USER@$DREAMHOST_HOST:$DREAMHOST_WEB_ROOT/assets/logo.jpg"
+            assets/icon-192.png \
+            assets/icon-512.png \
+            "$DREAMHOST_USER@$DREAMHOST_HOST:$DREAMHOST_WEB_ROOT/assets/"
           rsync -avz --delete \
             -e "ssh -p ${DREAMHOST_PORT:-22}" \
             whats-it-worth/dist/ \

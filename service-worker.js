@@ -1,94 +1,28 @@
-const CACHE_NAME = "cottage-info-v34";
-const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./styles.css?v=33",
-  "./app.js?v=33",
-  "./data.js?v=33",
-  "./manifest.webmanifest",
-  "./assets/logo.jpg"
-];
-const APP_SHELL_SUFFIXES = [
-  "/",
-  "/index.html",
-  "/styles.css",
-  "/app.js",
-  "/data.js",
-  "/manifest.webmanifest",
-  "/assets/logo.jpg"
-];
-
-self.addEventListener("install", (event) => {
-  self.skipWaiting();
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+const CACHE_NAME = 'cottage-info-v35';
+const APP_SHELL = ['/', '/index.html', '/styles.css?v=33', '/app.js?v=33', '/data.js?v=33', '/kiosk.js?v=1', '/kiosk.css?v=1', '/manifest.webmanifest', '/assets/logo.jpg', '/assets/icon-192.png', '/assets/icon-512.png', '/offline.html'];
+const SHELL_URLS = new Set(APP_SHELL.map(path => new URL(path, self.location.origin).href));
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
 });
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
-    )
-  );
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('cottage-info-') && key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
-
-self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") {
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  // Cache only the public main app shell, never private configuration or APIs.
+  if (!SHELL_URLS.has(url.href)) {
+    if (event.request.mode === 'navigate') event.respondWith(fetch(event.request, { cache: 'no-store' }).catch(() => caches.match('/offline.html')));
     return;
   }
-
-  const requestUrl = new URL(event.request.url);
-  if (requestUrl.origin !== self.location.origin) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  const path = requestUrl.pathname.toLowerCase();
-  if (path === "/wiw" || path.startsWith("/wiw/")) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-  const isAppShellRequest = APP_SHELL_SUFFIXES.some((suffix) => path === suffix || path.endsWith(suffix));
-
-  if (path.endsWith("/data.private.js")) {
-    event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
-          const copy = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          return networkResponse;
-        })
-        .catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  if (!isAppShellRequest) {
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        if (event.request.mode === "navigate") {
-          return caches.match("./index.html");
-        }
-        return new Response("", { status: 504, statusText: "Gateway Timeout" });
-      })
-    );
-    return;
-  }
-
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
-      return fetch(event.request)
-        .then((networkResponse) => {
-          if (event.request.method === "GET" && event.request.url.startsWith(self.location.origin)) {
-            const copy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          }
-          return networkResponse;
-        })
-        .catch(() => caches.match("./index.html"));
-    })
-  );
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    try {
+      const response = await fetch(event.request);
+      if (response.ok && response.type === 'basic' && !response.redirected) await cache.put(event.request, response.clone());
+      return response;
+    } catch {
+      return await cache.match(event.request) || new Response('Offline', { status: 503 });
+    }
+  })());
 });

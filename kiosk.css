@@ -1,0 +1,8 @@
+.rdp-kiosk-bar { position: sticky; top: 0; z-index: 100; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); background: #10212b; color: white; font: 16px system-ui, sans-serif; }
+.rdp-kiosk-bar a, .rdp-kiosk-bar button, .rdp-external-dialog button { box-sizing: border-box; min-height: 48px; padding: 12px 16px; border: 1px solid #74818a; border-radius: 8px; background: #fff; color: #10212b; font: 600 16px system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+.rdp-kiosk-bar [hidden] { display: none; }
+.rdp-kiosk-bar :focus-visible, .rdp-external-dialog button:focus-visible { outline: 3px solid #e4a937; outline-offset: 2px; }
+.rdp-kiosk-bar [role=status]:empty { display: none; }
+.rdp-kiosk-bar [role=status] { flex-basis: 100%; }
+.rdp-external-dialog { max-width: min(480px, 85vw); padding: 24px; border: 0; border-radius: 16px; background: #fff; color: #10212b; font: 18px/1.5 system-ui, sans-serif; }
+.rdp-external-dialog::backdrop { background: #0009; }
