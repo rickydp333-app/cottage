@@ -1,5 +1,5 @@
-const CACHE_NAME = 'cottage-info-v35';
-const APP_SHELL = ['/', '/index.html', '/styles.css?v=33', '/app.js?v=33', '/data.js?v=33', '/kiosk.js?v=1', '/kiosk.css?v=1', '/manifest.webmanifest', '/assets/logo.jpg', '/assets/icon-192.png', '/assets/icon-512.png', '/offline.html'];
+const CACHE_NAME = 'cottage-info-v36';
+const APP_SHELL = ['/', '/index.html', '/styles.css?v=33', '/app.js?v=33', '/data.js?v=33', '/kiosk.js?v=2', '/kiosk.css?v=2', '/manifest.webmanifest', '/assets/logo.jpg', '/assets/icon-192.png', '/assets/icon-512.png', '/offline.html'];
 const SHELL_URLS = new Set(APP_SHELL.map(path => new URL(path, self.location.origin).href));
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));

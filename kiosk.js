@@ -38,6 +38,15 @@
   let trigger = null;
   dialog.querySelector('button').onclick = () => dialog.close();
   dialog.addEventListener('close', () => { try { popup?.close(); } catch {} popup = null; trigger?.focus(); });
+  const mapDialog = document.createElement('dialog');
+  mapDialog.className = 'rdp-map-dialog';
+  mapDialog.setAttribute('aria-label', 'Map');
+  mapDialog.innerHTML = '<header><h2>Map</h2><button type="button">Close Map / Back to RDPs Place</button></header><p class="rdp-map-address"></p><iframe title="Location map" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-forms"></iframe><p class="rdp-map-help">If the map stays blank, check the kiosk internet connection and allow Google Maps in its website settings.</p>';
+  document.body.append(mapDialog);
+  const mapFrame = mapDialog.querySelector('iframe');
+  let mapTrigger = null;
+  mapDialog.querySelector('button').onclick = () => mapDialog.close();
+  mapDialog.addEventListener('close', () => { mapFrame.removeAttribute('src'); mapTrigger?.focus(); });
   document.addEventListener('click', event => {
     const link = event.target.closest?.('a[href]');
     if (!link || event.defaultPrevented || link.hasAttribute('download') || event.button !== 0) return;
@@ -45,6 +54,19 @@
     if (!['http:', 'https:'].includes(url.protocol)) return;
     if (url.origin === location.origin) { link.target = '_self'; return; }
     event.preventDefault();
+    // Our Map buttons use Google Maps address queries. Embed these in the
+    // current kiosk window; a popup can be hidden or blocked by kiosk policy.
+    if (url.hostname === 'maps.google.com' && url.searchParams.get('q')) {
+      const address = url.searchParams.get('q');
+      const embed = new URL('https://www.google.com/maps');
+      embed.searchParams.set('q', address);
+      embed.searchParams.set('output', 'embed');
+      mapTrigger = link;
+      mapDialog.querySelector('.rdp-map-address').textContent = address;
+      mapFrame.src = embed.href;
+      if (!mapDialog.open) mapDialog.showModal();
+      return;
+    }
     trigger = link;
     try {
       popup?.close();
