@@ -3,3 +3,5 @@
 #mobileSettings,#mobilePlaylist{display:none}@media(max-width:650px){#mobileSettings{display:block;flex:0}#mobilePlaylist{display:block;border:0;font-size:12px;padding:6px 10px}}
 
 input[hidden]{display:none!important}.folder-import{padding:12px;border:1px solid #ffffff25;border-radius:8px}#importStatus{color:var(--accent);font-weight:600}
+
+#selectedFiles[hidden],#newImportPlaylistLabel[hidden]{display:none}#importPlaylist{width:100%;padding:12px;background:#102323;color:white;border:1px solid #ffffff30;border-radius:6px;font:inherit}
