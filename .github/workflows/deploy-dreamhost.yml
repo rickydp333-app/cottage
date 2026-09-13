@@ -66,6 +66,7 @@ jobs:
             kiosk.js \
             kiosk.css \
             offline.html \
+            rpdsgrove \
             renterscottage \
             "$DREAMHOST_USER@$DREAMHOST_HOST:$DREAMHOST_WEB_ROOT/"
           rsync -avz \
