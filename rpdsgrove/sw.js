@@ -1,4 +1,4 @@
-const CACHE='grove-shell-v2';
+const CACHE='grove-shell-v3';
 const SHELL=['./','index.html','style.css','app.js','catalog.json','icon.svg','art-0.svg','art-1.svg','art-2.svg','art-3.svg','manifest.webmanifest','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('grove-shell-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
