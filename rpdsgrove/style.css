@@ -5,3 +5,5 @@
 input[hidden]{display:none!important}.folder-import{padding:12px;border:1px solid #ffffff25;border-radius:8px}#importStatus{color:var(--accent);font-weight:600}
 
 #selectedFiles[hidden],#newImportPlaylistLabel[hidden]{display:none}#importPlaylist{width:100%;padding:12px;background:#102323;color:white;border:1px solid #ffffff30;border-radius:6px;font:inherit}
+
+.now #nowPlaylist{font-size:11px;padding:6px 9px;border:1px solid #ffffff30;white-space:nowrap}.now>div{min-width:0}.now strong{overflow:hidden;text-overflow:ellipsis}.now{flex-wrap:wrap}@media(max-width:650px){.now{flex-wrap:nowrap}.now #nowPlaylist{margin-left:auto}.now #nowFavorite{display:none}.now>div{flex:1}}
