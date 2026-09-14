@@ -50,7 +50,7 @@ $result=[];
 if($action==='heartbeat'){
  if(!$isOwner)fail('Player authorization required.',403);
  $s=is_array($b['status']??null)?$b['status']:[];
- $r['status']=['song'=>song($s['song']??null),'queue'=>ids($s['queue']??[]),'position'=>number($s['position']??0,0,86400),'duration'=>number($s['duration']??0,0,86400),'volume'=>number($s['volume']??0.7,0,1),'paused'=>($s['paused']??true)!==false,'shuffle'=>($s['shuffle']??false)===true,'repeat'=>(int)number($s['repeat']??0,0,2),'output'=>substr((string)($s['output']??'This device'),0,100)];
+ $r['status']=['title'=>substr((string)($s['title']??''),0,160),'stopped'=>($s['stopped']??false)===true,'song'=>song($s['song']??null),'queue'=>ids($s['queue']??[]),'position'=>number($s['position']??0,0,86400),'duration'=>number($s['duration']??0,0,86400),'volume'=>number($s['volume']??0.7,0,1),'paused'=>($s['paused']??true)!==false,'shuffle'=>($s['shuffle']??false)===true,'repeat'=>(int)number($s['repeat']??0,0,2),'output'=>substr((string)($s['output']??'This device'),0,100)];
  $r['seen']=$now;$after=(int)($b['after']??0);
  $r['commands']=array_values(array_filter($r['commands'],fn($c)=>$c['id']>$after&&$c['time']>$now-30));
  $result=['commands'=>$r['commands']];
@@ -59,7 +59,7 @@ if($action==='heartbeat'){
 }elseif($action==='command'){
  if($r['seen']<$now-12)fail('The player is offline or asleep. Open its RPDsGrove page first.',409);
  $type=$b['type']??'';
- if(!in_array($type,['play','toggle','next','previous','seek','volume','enqueue','clearQueue','removeQueue','shuffle','repeat'],true))fail('Unknown control.');
+ if(!in_array($type,['play','stop','toggle','next','previous','seek','volume','enqueue','clearQueue','removeQueue','shuffle','repeat'],true))fail('Unknown control.');
  $r['commandTimes']=array_values(array_filter($r['commandTimes'],fn($t)=>$t>$now-10));
  if(count($r['commandTimes'])>=30)fail('Too many controls. Try again in a moment.',429);
  $c=['id'=>++$r['seq'],'time'=>$now,'type'=>$type];
