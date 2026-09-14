@@ -69,3 +69,5 @@ const sdk=document.createElement('script');sdk.src='https://www.gstatic.com/cv/j
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 $('#deviceVolume').onchange=e=>volume(Number(e.target.value));$('#fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch{notice('Use your browser’s full-screen option, or install the app.')}};
+
+$('#returnToKiosk').onclick=()=>{if(document.documentElement.dataset.kioskReturn==='ready')window.dispatchEvent(new Event('rpdsgrove:return'));else location.assign('/')};
