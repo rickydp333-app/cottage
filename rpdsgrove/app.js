@@ -72,3 +72,6 @@ $('#deviceVolume').onchange=e=>volume(Number(e.target.value));$('#fullscreen').o
 
 $('#returnToKiosk').onclick=()=>location.assign('/');
 $('#returnToKioskApp').onclick=()=>{if(document.documentElement.dataset.kioskReturn==='ready')window.dispatchEvent(new Event('rpdsgrove:return'));else notice('To return to the kiosk app, open RPDsGrove using its button on the kiosk home screen. This browser is not connected to the kiosk launcher.');};
+
+// Narrow integration surface for the optional Play Along panel.
+window.grovePlayer=Object.freeze({current:()=>state.current,position,seek,toggle,isRemote:()=>!!(state.remote||state.cast),pauseLocal:()=>{if(!state.remote&&!state.cast)audio.pause();}});
