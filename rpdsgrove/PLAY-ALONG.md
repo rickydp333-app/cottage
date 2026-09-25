@@ -26,3 +26,13 @@ Processing is free and on-device: no API key or audio-analysis service. Limits r
 - [Fixed real-recording benchmark](https://github.com/rickydp333-app/cottage/tree/main/tests/chord-benchmark): old engine 53.6%, Chordino 84.4% duration-weighted agreement with reduced chord sheets on ten GuitarSet recordings. This small major-chord sample does not establish general full-song or seventh-chord accuracy.
 
 Browser smoke testing covers actual decoding, worker/WASM, timeline and chord display. Desktop and phone-size layouts are checked; responsive emulation is not physical-device testing. Service-worker shell v12 includes the new assets.
+
+## Whole-song documents
+
+After analysis, choose **Create song sheet**. A **Song sheet: [title]** shortcut also stays beside the player after the panel closes or playback advances. The sheet contains the entire analyzed timeline, including unknown sections and your corrections. It holds a snapshot of that recording, so switching songs cannot change an open document.
+
+Paste lyrics into the editor; there is no automatic speech/lyric transcription. Optional markers such as `[C]Down by the [Am]water` put chords above the following words. Plain lyrics are shown separately from the complete timed chord table: alignment is never guessed. Lyrics are saved per recording in local browser storage; download to retain a portable copy.
+
+**Download document** creates a standalone UTF-8 HTML file with all styles included, no scripts or remote resources. **Print / Save as PDF** prints only the document, with repeating timeline headers and sensible page breaks. PDF saving depends on the browser/system print options. A sandboxed preview safely escapes lyrics, titles and chord labels. The text stays on the device. Service-worker shell v13 includes these assets.
+
+`node tests/song-sheet.cjs` covers escaping, whole-song coverage, inline chord placement, export, per-recording lyrics and immutable snapshots. UI tests also cover access after a song change. Desktop and 390px browser layouts, the actual downloaded HTML, and all 61 sections of a library song were checked.

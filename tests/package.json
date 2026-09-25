@@ -1,1 +1,1 @@
-{"private": true, "description": "Tests for RPDsGrove Play Along", "scripts": {"test": "node chords.cjs && node detailed-chords.cjs && node play-along.cjs"}, "devDependencies": {"jsdom": "30.1.1"}}
+{"private": true, "description": "Tests for RPDsGrove Play Along", "scripts": {"test": "node chords.cjs && node detailed-chords.cjs && node play-along.cjs && node song-sheet.cjs"}, "devDependencies": {"jsdom": "30.1.1"}}

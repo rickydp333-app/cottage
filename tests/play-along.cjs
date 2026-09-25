@@ -14,6 +14,7 @@ class AudioContext {state='running';sampleRate=48000;async resume(){} async clos
 w.AudioContext=AudioContext;
 class Worker {static all=[];constructor(){Worker.all.push(this);}postMessage(){}terminate(){this.dead=true;}}
 w.Worker=Worker;
+let openedSheet;w.GroveSongSheet={open:x=>{openedSheet=x;}};
 for(const file of ['chord-theory.js','guitar-voicings.js','guitar.js'])w.eval(fs.readFileSync(path.join(root,file),'utf8'));w.eval(fs.readFileSync(path.join(root,'play-along.js'),'utf8'));
 const $=id=>w.document.getElementById(id),click=id=>$(id).click();
 click('playAlongButton');click('paLive');click('paMic');await tick();assert.match($('paStatus').textContent,/permission/);
@@ -26,6 +27,7 @@ click('paUpload');assert.equal(stopped,2);assert(worker.dead);assert.equal($('pa
 const key='grove:chords:v2:test:https://audio.soundbreak.ai/a/b.mp3';w.localStorage.setItem(key,JSON.stringify([{start:0,end:2,chord:'C',strength:.8},{start:2,end:4,chord:'G',strength:.8}]));
 click('paLibrary');assert.equal($('paChord').textContent,'C');$('paTimeline').children[1].click();assert(pos>2);assert.equal($('paChord').textContent,'G');
 $('paCorrection').value='Am';$('paCorrection').dispatchEvent(new w.Event('change'));assert.equal(JSON.parse(w.localStorage.getItem(key))[1].chord,'Am');
+click('paSongSheet');assert.equal(openedSheet.segments[1].chord,'Am');assert.equal(openedSheet.segments.length,2);
 $('paHand').value='left';$('paHand').dispatchEvent(new w.Event('change'));assert.equal(w.localStorage.getItem('grove:chord-hand'),'left');
 click('paClose');click('playAlongButton');assert.equal($('paTimeline').children[1].firstChild.textContent,'Am');
 // Detailed labels describe actual chord notes, and imported charts are validated.
@@ -35,5 +37,6 @@ Object.defineProperty($('paChartFile'),'files',{configurable:true,value:[{size:2
 chart.segments[1].chord='<img onerror=alert(1)>';await $('paChartFile').onchange();assert.match($('paStatus').textContent,/invalid/);assert.equal($('paTimeline').children[1].firstChild.textContent,'G7');
 chart.segments[1].chord='G7';chart.sourceKey='other';await $('paChartFile').onchange();assert.match($('paStatus').textContent,/different recording/);
 current={id:'new',url:'https://audio.soundbreak.ai/c/d.mp3',title:'New',genre:'Test',version:'2'};await new Promise(r=>setTimeout(r,250));assert.equal($('paTimeline').children.length,0);assert.match($('paSource').textContent,/New/);
+click('paClose');click('songSheetShortcut');assert.equal(openedSheet.source.id,'test','finished song remains available after player advances');assert.equal(openedSheet.segments[1].chord,'G7');
 dom.window.close();console.log('PASS: delayed microphone permission after close, permission denial, live detection, track/worker cleanup, cache restore, correction persistence, left-hand preference, source change.');
 })().catch(e=>{console.error(e);process.exit(1)});
