@@ -4,3 +4,7 @@
 @media(prefers-reduced-motion:no-preference){#playAlong .pa-timeline{scroll-behavior:smooth}}
 /* Stack the guitar on narrow phones so finger numbers remain readable. */
 @media(max-width:500px){#playAlong .pa-grid{display:flex;flex-direction:column;gap:16px}#playAlong .pa-detail{display:contents}#playAlong .pa-current{order:-2;display:grid;grid-template-columns:100px 1fr;align-items:center;column-gap:15px}#playAlong .pa-current .eyebrow{grid-column:1/-1}#paChord{grid-row:2/4;font-size:60px}#paNext,#paQuality{margin:4px 0}#playAlong .pa-guitar{order:-1;padding:12px}#paGuitar{width:240px;max-width:100%}#playAlong .pa-guitar label{display:flex;font-size:13px}#playAlong .pa-guitar select{width:auto;font-size:13px}#playAlong .pa-legend{font-size:12px}#playAlong .pa-controls{margin:0}#playAlong .pa-edit{margin:0}#paSource{margin:0}#playAlong .pa-guitar .pa-legend{margin-bottom:0;text-align:center}}
+
+/* Extended and slash chord labels must never collide with their descriptions. */
+#paChord{font-size:clamp(36px,5vw,64px);overflow-wrap:anywhere}#paNotes,#paFingering{font-size:14px;line-height:1.55;overflow-wrap:anywhere}#paFingering:empty{display:none}
+@media(max-width:500px){#playAlong .pa-current{display:block}#paChord{font-size:48px;margin:8px 0}#paNotes{font-size:13px}#paNext{margin-top:10px}}

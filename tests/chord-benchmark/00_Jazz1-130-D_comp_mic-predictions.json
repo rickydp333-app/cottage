@@ -1,0 +1,139 @@
+{
+  "previous": [
+    {
+      "start": 0,
+      "end": 2.749750566893424,
+      "chord": null,
+      "strength": 0.5026912352087861,
+      "frames": 11
+    },
+    {
+      "start": 2.749750566893424,
+      "end": 6.999365079365079,
+      "chord": "D",
+      "strength": 0.5296171396571702,
+      "frames": 17
+    },
+    {
+      "start": 6.999365079365079,
+      "end": 7.749297052154195,
+      "chord": null,
+      "strength": 0.41679192603124554,
+      "frames": 3
+    },
+    {
+      "start": 7.749297052154195,
+      "end": 10.999002267573696,
+      "chord": "G",
+      "strength": 0.8695332262577841,
+      "frames": 13
+    },
+    {
+      "start": 10.999002267573696,
+      "end": 15.998548752834466,
+      "chord": null,
+      "strength": 0.44594626488904243,
+      "frames": 20
+    },
+    {
+      "start": 15.998548752834466,
+      "end": 16.998458049886622,
+      "chord": "A",
+      "strength": 0.7160956453305319,
+      "frames": 4
+    },
+    {
+      "start": 16.998458049886622,
+      "end": 18.74829931972789,
+      "chord": null,
+      "strength": 0.32101511648726605,
+      "frames": 7
+    },
+    {
+      "start": 18.74829931972789,
+      "end": 22.14721088435374,
+      "chord": "D",
+      "strength": 0.816454294021644,
+      "frames": 14
+    }
+  ],
+  "detailed": [
+    {
+      "start": 0,
+      "chord": null,
+      "end": 0.046439909,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 0.046439909,
+      "chord": "D7",
+      "end": 1.160997732,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 1.160997732,
+      "chord": "D",
+      "end": 7.151746032,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 7.151746032,
+      "chord": "G",
+      "end": 11.052698413,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 11.052698413,
+      "chord": "Am",
+      "end": 12.027936508,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 12.027936508,
+      "chord": "D",
+      "end": 14.024852608,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 14.024852608,
+      "chord": "Am",
+      "end": 14.53569161,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 14.53569161,
+      "chord": "A",
+      "end": 16.857687075,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 16.857687075,
+      "chord": "Dm7",
+      "end": 18.622403628,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 18.622403628,
+      "chord": "D",
+      "end": 22.105396825,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 22.105396825,
+      "chord": null,
+      "end": 22.14721088435374,
+      "engine": "chordino",
+      "strength": null
+    }
+  ]
+}

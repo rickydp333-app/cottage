@@ -13,6 +13,12 @@
   const names=['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
   function shape(chord){
     if(open[chord])return {...open[chord],base:1};
+    const theory=typeof module!=='undefined'?require('./chord-theory.js'):root.GroveTheory;
+    const parsed=theory.parse(chord);
+    if(!parsed)return null;
+    if(parsed.quality!==''&&parsed.quality!=='m'||chord.includes('/'))return (typeof module!=='undefined'?require('./guitar-voicings.js'):root.GroveVoicings).shape(chord);
+    chord=names[parsed.rootPc]+parsed.quality;
+    if(open[chord])return {...open[chord],base:1};
     const minor=chord?.endsWith('m'),note=minor?chord.slice(0,-1):chord,pc=names.indexOf(note);
     if(pc<0)return null;
     const e=(pc-4+12)%12,a=(pc-9+12)%12;

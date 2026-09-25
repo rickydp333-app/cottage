@@ -1,24 +1,28 @@
 # Play Along
 
-Open RPDsGrove, select a song, then choose **Play Along** beside Stop.
+Select a song and open **Play Along** beside Stop. Choose **Analyze song**.
+Old version-1 estimates are deliberately ignored; analyze again for the new engine.
 
-- **Current song** analyzes the library recording and follows the existing player's clock. Chord maps and corrections are saved in this browser (the latest 12 recordings).
-- **Upload a song** reads a local audio file without uploading it. Use its audio controls for playback. This temporary recording and its map are released when the panel closes or the source changes.
-- **Listen live** uses the microphone only after a user gesture and browser permission. Audio is neither recorded nor transmitted. Stop, close, source change, backgrounding, disconnection, and page exit release microphone tracks.
-- Tap timeline tiles to seek. Correct a section using the chord selector. Repeat chord is available for local playback. Right/left hand preferences persist on the device.
+- **Current song:** analyze the library recording, follow playback, and keep the most recent 12 chord maps and corrections in this browser.
+- **Upload a song:** select a local recording; audio stays on this device.
+- **Listen live:** quick major/minor estimates. This approximate mode does not use the detailed full-recording engine.
+- Tap a section to seek, read the chord name and notes, and see a suggested standard-tuning guitar shape. Slash labels identify the bass.
+- Correct a section from a trusted chart or by ear. **Save chord chart** exports JSON; **Load chord chart** restores it with the matching recording selected. Imported charts are labeled as supplied, never automatically called verified.
+- Repeat chord works for local playback. Right/left-handed views are available.
 
-## Boundaries
+## Accuracy and boundaries
 
-This is an experimental, dependency-free pitch-class/template estimator for 24 major/minor chords. It does not identify exact original guitar voicings, seventh/extended chords, capo position, alternate tunings, or individual instrument parts. Full mixes can yield wrong or uncertain results. Confidence labels describe template strength, not calibrated probabilities. No professional transcription accuracy is claimed.
+Full-song analysis uses bundled **Chordino** NNLS at 22.05 kHz, with tuning estimation, bass/treble information and sequence decoding. The built-in dictionary includes major, minor, sixth, seventh, diminished, augmented and slash chords. Suspended and diminished-seventh labels are also available as corrections. See [license, source and build instructions](vendor/chordino/README.md).
 
-Analysis uses an 8192-sample Hann-window FFT, interpolated spectral peaks, pitch-class noise-floor subtraction, triad scoring and temporal voting. A worker keeps analysis off the UI thread. Library audio is fetched separately; the existing media element and Cast path are not rerouted through Web Audio. The SoundBreak host currently permits CORS. If a host blocks fetching, use a local recording instead.
+Drums, vocals, distortion and overlapping instruments remain difficult. Labels are estimates, not calibrated probabilities. The guitar suggests a voicing, not the original player's exact fingering. If no supported shape contains every chord tone and requested bass, the app shows the notes without a fingering. It never substitutes a major triad for an unsupported extended chord.
 
-Files are limited to 40 MB and decoded recordings to 12 minutes. Browser codec and memory support still apply. Uploaded audio stays in memory; existing library imports retain their original storage model. Microphone use requires HTTPS (or localhost) and a supported browser. Keep the page visible. Remote/Cast playback follows the existing reported position and can have additional timing lag; looping is restricted to local playback. Physical iPhone, Android, microphone hardware, Cast speakers and kiosk permission policies require device testing; responsive viewport tests do not substitute for these.
+Processing is free and on-device: no API key or audio-analysis service. Limits remain 40 MB and 12 minutes, subject to browser memory and codecs. A cancellable worker performs analysis. Playback and Cast are not rerouted. Microphone tracks stop on close, source change, backgrounding, disconnection and page exit. Physical phones, microphone hardware and Cast speakers still require device testing.
 
 ## Validation
 
-Run `node tests/chords.cjs` for the dependency-free audio/fingering tests. For UI lifecycle tests, run `npm install --prefix tests`, then `npm test --prefix tests` (Node 24+, jsdom 30.1.1).
+- `node tests/chords.cjs`: legacy live estimator and basic guitar regressions.
+- `node tests/detailed-chords.cjs`: actual compiled analyzer, silence, major seventh, note spelling, and 2,028 root/quality/bass combinations. 1,356 shapes validate; 672 safely show no simple shape. Every chord tone, bass note, finger count and displayed fret is checked.
+- `npm install --prefix tests` then `npm test --prefix tests`: permission/stream cleanup, saved corrections, extended note display, chart import validation, invalid labels and source mismatch handling.
+- [Fixed real-recording benchmark](https://github.com/rickydp333-app/cottage/tree/main/tests/chord-benchmark): old engine 53.6%, Chordino 84.4% duration-weighted agreement with reduced chord sheets on ten GuitarSet recordings. This small major-chord sample does not establish general full-song or seventh-chord accuracy.
 
-Tests cover all 24 chords, 44.1/48 kHz microphone conversion, guitar fingering pitches, silence, single notes, deterministic noise, a timed C/G/Am/F fixture, delayed microphone permission, denial, stream cleanup, saved corrections, handedness and source switching. These synthetic checks do not measure real-song accuracy. A real catalog MP3 was also exercised through browser download, decoding, worker analysis and timeline rendering. Desktop and 390-pixel phone layouts were visually checked.
-
-No new production packages, paid services, API keys, server endpoints or uploads are needed. The existing DreamHost deployment includes these static files. Service-worker shell version 11 includes the new assets. Restore the previous versions of index.html, app.js and sw.js to remove the entry point if rollback is needed; stored chord maps do not affect normal playback.
+Browser smoke testing covers actual decoding, worker/WASM, timeline and chord display. Desktop and phone-size layouts are checked; responsive emulation is not physical-device testing. Service-worker shell v12 includes the new assets.

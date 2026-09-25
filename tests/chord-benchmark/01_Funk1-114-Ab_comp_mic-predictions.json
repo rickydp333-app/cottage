@@ -1,0 +1,181 @@
+{
+  "previous": [
+    {
+      "start": 0,
+      "end": 0.9999092970521541,
+      "chord": "Abm",
+      "strength": 0.3464993041769604,
+      "frames": 4
+    },
+    {
+      "start": 0.9999092970521541,
+      "end": 1.2498866213151927,
+      "chord": null,
+      "strength": 0.6376266839762526,
+      "frames": 1
+    },
+    {
+      "start": 1.2498866213151927,
+      "end": 7.749297052154195,
+      "chord": "Abm",
+      "strength": 0.6791993810790987,
+      "frames": 26
+    },
+    {
+      "start": 7.749297052154195,
+      "end": 8.499229024943311,
+      "chord": null,
+      "strength": 0.1853775041444772,
+      "frames": 3
+    },
+    {
+      "start": 8.499229024943311,
+      "end": 9.999092970521541,
+      "chord": "C#m",
+      "strength": 0.5961446336232892,
+      "frames": 6
+    },
+    {
+      "start": 9.999092970521541,
+      "end": 10.24907029478458,
+      "chord": null,
+      "strength": 0.4977391564931155,
+      "frames": 1
+    },
+    {
+      "start": 10.24907029478458,
+      "end": 10.999002267573696,
+      "chord": "C#",
+      "strength": 0.40508054515994774,
+      "frames": 3
+    },
+    {
+      "start": 10.999002267573696,
+      "end": 13.74875283446712,
+      "chord": null,
+      "strength": 0.2186833451487324,
+      "frames": 11
+    },
+    {
+      "start": 13.74875283446712,
+      "end": 15.49859410430839,
+      "chord": "Abm",
+      "strength": 0.614458029257983,
+      "frames": 7
+    },
+    {
+      "start": 15.49859410430839,
+      "end": 16.748480725623583,
+      "chord": null,
+      "strength": 0.5066093534458895,
+      "frames": 5
+    },
+    {
+      "start": 16.748480725623583,
+      "end": 17.498412698412697,
+      "chord": "Eb",
+      "strength": 0.5149996198255311,
+      "frames": 3
+    },
+    {
+      "start": 17.498412698412697,
+      "end": 18.498321995464853,
+      "chord": null,
+      "strength": 0.11031890501504826,
+      "frames": 4
+    },
+    {
+      "start": 18.498321995464853,
+      "end": 19.24825396825397,
+      "chord": "Eb",
+      "strength": 0.7761946800435472,
+      "frames": 3
+    },
+    {
+      "start": 19.24825396825397,
+      "end": 20.248163265306122,
+      "chord": "C#",
+      "strength": 0.5839226326022027,
+      "frames": 4
+    },
+    {
+      "start": 20.248163265306122,
+      "end": 25.258412698412698,
+      "chord": null,
+      "strength": 0.24320776410001313,
+      "frames": 21
+    }
+  ],
+  "detailed": [
+    {
+      "start": 0,
+      "chord": null,
+      "end": 0.046439909,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 0.046439909,
+      "chord": "Abm",
+      "end": 7.94122449,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 7.94122449,
+      "chord": "Bbm6",
+      "end": 8.219863946,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 8.219863946,
+      "chord": "C#m",
+      "end": 10.216780045,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 10.216780045,
+      "chord": "C#",
+      "end": 12.724535147,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 12.724535147,
+      "chord": "Abm",
+      "end": 16.764807256,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 16.764807256,
+      "chord": "Eb",
+      "end": 19.13324263,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 19.13324263,
+      "chord": "C#",
+      "end": 20.897959184,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 20.897959184,
+      "chord": "Abmaj7",
+      "end": 25.216870748,
+      "engine": "chordino",
+      "strength": null
+    },
+    {
+      "start": 25.216870748,
+      "chord": null,
+      "end": 25.258412698412698,
+      "engine": "chordino",
+      "strength": null
+    }
+  ]
+}
