@@ -102,3 +102,38 @@ test('mobile Remove target is touch sized and dialog stays within viewport',asyn
  await target.click();const dialog=await page.locator('#removeSongDialog').boundingBox();assert.ok(dialog.x>=0&&dialog.x+dialog.width<=390);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
 });
+test('Spotify links persist, open an embed and are removed from the local catalog',async t=>{
+ const page=await setup(t);
+ await page.locator('#addButton').click();
+ await page.locator('#spotifyTitle').fill('Test track');
+ await page.locator('#spotifyUrl').fill('https://open.spotify.com/track/abc123');
+ await page.locator('#addSpotifyButton').click();
+ await page.waitForFunction(()=>state.songs.length===9);
+ await page.reload();
+ await page.waitForFunction(()=>state.songs.length===9);
+ const song=await page.evaluate(()=>state.songs.find(item=>item.spotify));
+ await page.getByRole('button',{name:'Play Test track Spotify Open in Spotify',exact:true}).click();
+ assert.equal(await page.locator('#spotifyEmbedFrame').getAttribute('src'),'https://open.spotify.com/embed/track/abc123?utm_source=generator');
+ await page.locator('#spotifyEmbedDialog button.close').click();
+ await page.getByRole('button',{name:'Remove Test track from library',exact:true}).click();
+ await page.locator('#confirmRemoveSong').click();
+ await page.waitForFunction(()=>!document.querySelector('#removeSongDialog').open);
+ assert.equal(await page.evaluate(id=>read('spotify-songs',[]).some(item=>item.id===id),song.id),false);
+});
+test('local audio remains in browser storage until a remote command needs a server copy',async t=>{
+ const page=await setup(t);let uploads=0;
+ const mediaUrl=await page.evaluate(()=>location.origin+'/rpdsgrove/api.php?action=media&id='+'ab'.repeat(24));
+ await page.route('**/api.php',async route=>{uploads++;await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,url:mediaUrl,mime:'audio/wav',expires:Math.floor(Date.now()/1000)+86400})})});
+ await page.evaluate(()=>importFiles([new File(['local recording'],'practice.wav',{type:'audio/wav'})]));
+ assert.equal(uploads,0,'import must stay local');
+ const id=await page.evaluate(()=>state.songs.find(song=>song.local).id);
+ await page.evaluate(async id=>{state.remote={code:'a'.repeat(24)};api=async(_action,data)=>{window.remoteSong=data.song;return {ok:true}};await command('play',{song:getSong(id),queue:[]})},id);
+ assert.equal(uploads,1);
+ assert.equal(await page.evaluate(async id=>(await fileStore('get',id)).remoteUrl, id),mediaUrl);
+ assert.equal(await page.evaluate(()=>window.remoteSong.remoteUrl),mediaUrl);
+ assert.equal(await page.evaluate(()=>window.remoteSong.mime),'audio/wav');
+ await page.evaluate(id=>{state.remote={code:'a'.repeat(24)};window.remoteCommands=[];api=async(action,data)=>{window.remoteCommands.push({action,data});return {ok:true}};render()},id);
+ await page.getByRole('button',{name:'Add practice to queue',exact:true}).click();
+ assert.equal(await page.evaluate(()=>window.remoteCommands.at(-1).data.type),'enqueue');
+ assert.equal(await page.evaluate(()=>window.remoteCommands.at(-1).data.song.remoteUrl),mediaUrl);
+});

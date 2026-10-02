@@ -3,6 +3,8 @@ const $=s=>document.querySelector(s), audio=$('#audio');
 const read=(k,f)=>{try{return JSON.parse(localStorage.getItem('grove:'+k))??f}catch{return f}};
 const save=(k,v)=>{try{localStorage.setItem('grove:'+k,JSON.stringify(v))}catch{notice('Browser storage is full or unavailable. Changes may not be saved.')}};
 const state={songs:[],view:'all',favorites:read('favorites',[]),history:read('history',[]),playlists:read('playlists',[]),queue:[],current:null,shuffle:false,repeat:0,cast:null,remote:null,host:null,last:0};
+const savedSpotifySongs=read('spotify-songs',[]);
+const spotifySongs=(Array.isArray(savedSpotifySongs)?savedSpotifySongs:[]).filter(song=>song?.spotify&&/^https:\/\/open\.spotify\.com\/(track|album|playlist)\/[A-Za-z0-9]+(?:\?.*)?$/.test(song.url));
 let castReady=false;let stopped=true;
 let noticeTimer,castPlayer,castController,loading=false,polling=false,installPrompt=null,pendingPlaylistSong=null,renameId=null;
 function notice(t){if($('#add').open){$('#importStatus').textContent=t;$('#importStatus').scrollIntoView({block:'nearest'})}if($('#devices').open)$('#deviceStatus').textContent=t;$('#notice').textContent=t;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('#notice').textContent='',6500)}
@@ -10,14 +12,14 @@ function el(tag,props={},children=[]){const n=document.createElement(tag);for(co
 const button=(text,label,fn)=>el('button',{text,class:'icon','aria-label':label,onclick:fn});
 const getSong=id=>state.songs.find(s=>s.id===id);
 const clock=v=>Number.isFinite(v)?`${Math.floor(v/60)}:${String(Math.floor(v%60)).padStart(2,'0')}`:'0:00';
-function validUrl(u){try{const x=new URL(u);return x.protocol==='https:'&&x.hostname==='audio.soundbreak.ai'&&!x.username&&!x.password&&/^\/[a-zA-Z0-9/_-]+\.mp3$/.test(x.pathname)&&!x.port&&!x.search&&!x.hash}catch{return false}}
+function validUrl(u){try{const x=new URL(u);if(x.protocol==='https:'&&x.hostname==='audio.soundbreak.ai'&&!x.username&&!x.password&&/^\/[a-zA-Z0-9/_-]+\.mp3$/.test(x.pathname)&&!x.port&&!x.search&&!x.hash)return true;const params=[...x.searchParams.entries()];return x.origin===location.origin&&x.pathname==='/rpdsgrove/api.php'&&!x.username&&!x.password&&!x.hash&&params.length===2&&x.searchParams.get('action')==='media'&&/^[a-f0-9]{48}$/.test(x.searchParams.get('id')||'')}catch{return false}}
 function visible(){let a=state.songs;if(state.view==='favorites')a=a.filter(s=>state.favorites.includes(s.id));else if(state.view==='history')a=state.history.map(getSong).filter(Boolean);else if(state.view==='queue')a=state.queue.map(getSong).filter(Boolean);else if(state.view.startsWith('p:'))a=(state.playlists.find(p=>'p:'+p.id===state.view)?.songs||[]).map(getSong).filter(Boolean);const q=$('#search').value.toLowerCase();return a.filter(s=>(s.title+' '+s.genre+' '+s.version).toLowerCase().includes(q))}
 function render(){const list=visible(),p=state.playlists.find(p=>'p:'+p.id===state.view);$('#viewTitle').textContent=p?.name||({all:'All songs',favorites:'Favorites',history:'Recently played',queue:'Play queue'}[state.view]||'All songs');$('#songCount').textContent=`${list.length} song${list.length===1?'':'s'}`;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===state.view));$('#playlists').replaceChildren(...state.playlists.map(p=>el('button',{text:'♫  '+p.name,class:state.view==='p:'+p.id?'active':'',onclick:()=>{state.view='p:'+p.id;render()}})));$('#playlistActions').replaceChildren();if(p){$('#playlistActions').append(el('button',{text:'Rename',onclick:()=>{renameId=p.id;$('#playlistHeading').textContent='Rename playlist';$('#playlistForm').elements.name.value=p.name;$('#playlistDialog').showModal()}}),el('button',{text:'Delete playlist',onclick:()=>{state.playlists=state.playlists.filter(x=>x.id!==p.id);save('playlists',state.playlists);state.view='all';render()}}))}if(state.view==='queue')$('#playlistActions').append(el('button',{text:'Clear queue',onclick:()=>{if(state.remote)return command('clearQueue');state.queue=[];render()}}));$('#songs').replaceChildren(...list.map((s,i)=>{const n=el('div',{class:'song'});n.append(el('span',{class:'number',text:String(i+1)}),el('button',{class:'song-play'+(state.current?.id===s.id?' current':''),onclick:()=>choose(s,list,i),'aria-label':'Play '+s.title+' '+s.genre+' '+s.version},[el('img',{src:s.art||'art-0.svg',alt:'',loading:'lazy'}),el('span',{},[el('strong',{text:s.title}),el('small',{text:s.genre+' · '+s.version})])]),el('span',{class:'genre',text:s.genre}),button(state.favorites.includes(s.id)?'♥':'♡','Favorite '+s.title,()=>favorite(s.id)),button('＋','Add '+s.title+' to queue',()=>{if(state.remote&&s.local)notice('Local files cannot be queued on a remote player.');else if(state.remote)command('enqueue',{song:s});else{state.queue.push(s.id);render();notice('Added to queue')}}),button('⋯','Add '+s.title+' to playlist',()=>choosePlaylist(s.id)));if(s.local)n.append(button('×','Remove local file '+s.title,()=>removeLocal(s)));if(p)n.append(button('−','Remove from playlist',()=>{p.songs=p.songs.filter(id=>id!==s.id);save('playlists',state.playlists);render()}));if(state.view==='queue')n.append(button('×','Remove queued song',()=>{const index=state.queue.indexOf(s.id);if(state.remote)command('removeQueue',{index});else{state.queue.splice(index,1);render()}}));return n}));if(!list.length)$('#songs').append(el('p',{class:'empty',text:state.view==='queue'?'Your queue is empty. Use + beside a song to add it.':'No songs here yet. Try another search or add songs from your library.'}));$('#nowPlaylist').disabled=!state.current;$('#nowFavorite').textContent=state.current&&state.favorites.includes(state.current.id)?'♥':'♡'}
 function favorite(id){if(!id)return;state.favorites=state.favorites.includes(id)?state.favorites.filter(x=>x!==id):[...state.favorites,id];save('favorites',state.favorites);render()}
 function choosePlaylist(id){pendingPlaylistSong=id;if(!state.playlists.length){newPlaylist();return}$('#playlistChoices').replaceChildren(...state.playlists.map(p=>el('button',{text:p.name,type:'button',onclick:()=>{if(!p.songs.includes(id))p.songs.push(id);save('playlists',state.playlists);$('#choosePlaylist').close();render();notice('Added to '+p.name)}})));$('#choosePlaylist').showModal()}
 function newPlaylist(){renameId=null;$('#playlistHeading').textContent='Create playlist';$('#playlistForm').reset();$('#playlistDialog').showModal()}
-async function choose(s,list,i){if(s?.local&&(state.remote||state.cast)){notice('This file is stored on this device. Return to this device to play it, or add its SoundBreak link for Google speakers.');return;}if(!s)return notice('Choose a collection with songs first.');if(state.remote)return command('play',{song:s,queue:list.slice(i+1).map(x=>x.id)});state.queue=list.slice(i+1).map(x=>x.id);await play(s)}
-async function play(s){if(loading)return;if(!s||!(validUrl(s.url)||(s.local&&localUrls.has(s.url))))return;if(s.local&&state.cast){notice('Local files play on this device. Add a SoundBreak link to play this song on Google speakers.');return;}loading=true;stopped=false;state.current=s;$('#nowTitle').textContent=s.title;$('#nowGenre').textContent=s.genre+' · '+s.version;$('#nowArt').src=s.art||'art-0.svg';try{if(state.cast){const m=new chrome.cast.media.MediaInfo(s.url,'audio/mpeg');m.metadata=new chrome.cast.media.MusicTrackMediaMetadata();m.metadata.title=s.title;m.metadata.artist='SoundBreak · '+s.genre;m.metadata.images=[new chrome.cast.Image(new URL('icon-512.png',location.href).href)];await state.cast.loadMedia(new chrome.cast.media.LoadRequest(m));audio.pause()}else{audio.src=s.url;await audio.play()}state.history=[s.id,...state.history.filter(id=>id!==s.id)].slice(0,100);save('history',state.history);if('mediaSession'in navigator){navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:'SoundBreak',album:s.genre})}}catch(e){notice(state.cast?'The speaker could not load this song ('+(e.code||e.message||e)+'). Try another song, or reconnect the speaker.':'Playback could not start. Tap Play on the player, or try another song.')}finally{loading=false;render();updatePlayer()}}
+async function choose(s,list,i){if(s?.spotify){openSpotifyEmbed(s);return;}if(!s)return notice('Choose a collection with songs first.');if(s.local&&(state.remote||state.cast)){try{if(!await ensureRemoteUrl(s))throw Error('Upload unavailable.')}catch{notice('This file could not be uploaded for speaker or remote playback. Check the connection and try again.');return;}}if(state.remote)return command('play',{song:s,queue:list.slice(i+1).map(x=>x.id)});state.queue=list.slice(i+1).map(x=>x.id);await play(s)}
+async function play(s){if(loading)return;if(!s||!(validUrl(s.url)||(s.local&&localUrls.has(s.url))))return;if(s.local&&state.cast){try{if(!await ensureRemoteUrl(s))throw Error('Upload unavailable.')}catch{notice('This file could not be uploaded for speaker playback. Check the connection and try again.');return;}}loading=true;stopped=false;state.current=s;$('#nowTitle').textContent=s.title;$('#nowGenre').textContent=s.genre+' · '+s.version;$('#nowArt').src=s.art||'art-0.svg';try{if(state.cast){const m=new chrome.cast.media.MediaInfo(s.remoteUrl||s.url,s.mime||'audio/mpeg');m.metadata=new chrome.cast.media.MusicTrackMediaMetadata();m.metadata.title=s.title;m.metadata.artist='SoundBreak · '+s.genre;m.metadata.images=[new chrome.cast.Image(new URL('icon-512.png',location.href).href)];await state.cast.loadMedia(new chrome.cast.media.LoadRequest(m));audio.pause()}else{audio.src=s.url;await audio.play()}state.history=[s.id,...state.history.filter(id=>id!==s.id)].slice(0,100);save('history',state.history);if('mediaSession'in navigator){navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:'SoundBreak',album:s.genre})}}catch(e){notice(state.cast?'The speaker could not load this song ('+(e.code||e.message||e)+'). Try another song, or reconnect the speaker.':'Playback could not start. Tap Play on the player, or try another song.')}finally{loading=false;render();updatePlayer()}}
 async function next(ended=false){if(state.remote)return command('next');if(ended===true&&state.repeat===1&&state.current)return play(state.current);let id;if(state.queue.length){const n=state.shuffle?Math.floor(Math.random()*state.queue.length):0;id=state.queue.splice(n,1)[0]}else if(state.repeat===2&&state.songs.length){state.queue=state.songs.map(s=>s.id);id=state.queue.shift()}if(id)await play(getSong(id));else{if(state.cast)castController.stop();else audio.pause();updatePlayer()}}
 function previous(){if(state.remote)return command('previous');if(position()>3)return seek(0);const id=state.history.find(id=>id!==state.current?.id);if(id)play(getSong(id))}
 function stopPlayback(){if(state.remote)return command('stop');stopped=true;if(state.cast){castController.stop()}else{audio.pause();if(audio.readyState>0)audio.currentTime=0}updatePlayer()}
@@ -57,11 +59,16 @@ const localUrls=new Set();
 let musicDB;
 function openMusicDB(){if(!musicDB)musicDB=new Promise((resolve,reject)=>{const r=indexedDB.open('rpdsgrove-music',1);r.onupgradeneeded=()=>r.result.createObjectStore('files',{keyPath:'id'});r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});return musicDB}
 async function fileStore(action,value){const db=await openMusicDB();return new Promise((resolve,reject)=>{const tx=db.transaction('files',action==='getAll'?'readonly':'readwrite'),r=tx.objectStore('files')[action](...(value===undefined?[]:[value]));tx.oncomplete=()=>resolve(r.result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('Storage unavailable'))})}
-function localSong(row){const url=URL.createObjectURL(row.file);localUrls.add(url);return {id:row.id,title:row.name.replace(/\.[^.]+$/,''),genre:'Local file',version:'On this device',url,local:true,art:'art-0.svg'}}
+function localSong(row){const url=URL.createObjectURL(row.file);localUrls.add(url);const uploaded=typeof row.remoteUrl==='string'&&validUrl(row.remoteUrl)&&Number.isFinite(row.remoteExpires)&&row.remoteExpires>Date.now()/1000;return {id:row.id,title:row.name.replace(/\.[^.]+$/,''),genre:'Local file',version:uploaded?'Available on speakers':'On this device',url,remoteUrl:uploaded?row.remoteUrl:'',remoteExpires:uploaded?row.remoteExpires:0,mime:row.mime||row.file?.type||'audio/mpeg',local:true,art:'art-0.svg'}}
+async function uploadFile(file){const form=new FormData();form.append('action','upload');form.append('file',file,file.name);const response=await fetch('api.php',{method:'POST',body:form,cache:'no-store'});const result=await response.json().catch(()=>({}));if(!response.ok||!result.ok)throw Error(result.error||'Upload failed.');const url=new URL(result.url,location.href);if(!validUrl(url.href))throw Error('The server returned an invalid media URL.');return {url:url.href,mime:result.mime||file.type||'audio/mpeg',expires:Number(result.expires)||0}}
+async function ensureRemoteUrl(song){if(!song?.local)return true;if(song.remoteUrl&&validUrl(song.remoteUrl)&&song.remoteExpires>Date.now()/1000+60)return true;const row=await fileStore('get',song.id);if(!row?.file)return false;const uploaded=await uploadFile(row.file);row.remoteUrl=uploaded.url;row.remoteExpires=uploaded.expires;row.mime=uploaded.mime;await fileStore('put',row);song.remoteUrl=uploaded.url;song.remoteExpires=uploaded.expires;song.mime=uploaded.mime;song.version='Available on speakers';render();return true}
+const commandBeforeLocalUpload=command;
+command=async function commandWithLocalUpload(type,data={}){if((type==='play'||type==='enqueue')&&data.song?.local){try{if(!await ensureRemoteUrl(data.song))throw Error('Upload unavailable.')}catch{notice('This file could not be uploaded for remote playback. Check the connection and try again.');return;}}return commandBeforeLocalUpload(type,data)};
 async function restoreLocal(){try{const rows=await fileStore('getAll');state.songs.push(...rows.map(localSong))}catch{notice('Local music storage is unavailable. SoundBreak links still work.')}}
 async function removeLocal(s){try{await fileStore('delete',s.id);if(state.current?.id===s.id){audio.pause();audio.removeAttribute('src');state.current=null;$('#nowTitle').textContent='Choose your soundtrack';$('#nowGenre').textContent='RPDsGrove · SoundBreak'}URL.revokeObjectURL(s.url);localUrls.delete(s.url);state.songs=state.songs.filter(x=>x.id!==s.id);state.queue=state.queue.filter(id=>id!==s.id);render();notice('Local file removed from this browser')}catch{notice('Could not remove the local file.')}}
 async function importFiles(files,playlist=null){let added=0,skipped=0,failed=0;const imported=[];const status=$('#importStatus');$('#folderFiles').disabled=$('#musicFiles').disabled=$('#importAll').disabled=$('#importToPlaylist').disabled=true;try{for(const file of files){if(!/\.(mp3|wav|m4a|ogg|flac|aac)$/i.test(file.name)||file.size===0||file.size>100*1024*1024){skipped++;continue}status.textContent='Importing '+file.name+'…';try{const bytes=await file.arrayBuffer();const digest=await crypto.subtle.digest('SHA-256',bytes);const id='local-'+Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');if(state.songs.some(s=>s.id===id)){imported.push(id);skipped++;continue}const row={id,name:file.name,file};await fileStore('put',row);state.songs.push(localSong(row));imported.push(id);added++}catch{failed++}}if(playlist&&imported.length){if(!state.playlists.some(p=>p.id===playlist.id))state.playlists.push(playlist);playlist.songs=[...new Set([...playlist.songs,...imported])];save('playlists',state.playlists)}state.view='all';$('#search').value='';render();status.textContent=`${added} song${added===1?'':'s'} added. ${skipped?skipped+' skipped (duplicate, unsupported or over 100 MB). ':''}${failed?failed+' could not be saved. Browser storage may be full.':''}${playlist&&imported.length?' Added to playlist: '+playlist.name+'.':''}`;pendingFiles=[];$('#selectedFiles').hidden=true;}finally{$('#folderFiles').disabled=$('#musicFiles').disabled=$('#importAll').disabled=$('#importToPlaylist').disabled=false;$('#folderFiles').value='';$('#musicFiles').value=''}}
 let pendingFiles=[];
+const importDisclosure=document.querySelector('#add .folder-import>p');if(importDisclosure)importDisclosure.textContent='Imported audio stays in this browser for local playback. Choosing Google speakers or a remote room uploads a server copy for playback; server copies expire after 90 days.';
 function selectImportFiles(files){if(!files.length)return;pendingFiles=files;$('#selectedFiles').hidden=false;$('#selectedSummary').textContent=files.length===1?'Selected: '+files[0].name:files.length+' files selected';$('#importStatus').textContent='Choose where to add your selection.';$('#importPlaylist').replaceChildren(...state.playlists.map(p=>el('option',{value:p.id,text:p.name})),el('option',{value:'new',text:'Create a new playlist'}));$('#newImportPlaylistLabel').hidden=$('#importPlaylist').value!=='new';$('#importAll').scrollIntoView({block:'center'});$('#importAll').focus({preventScroll:true});}
 $('#folderFiles').onchange=e=>selectImportFiles(Array.from(e.target.files));$('#musicFiles').onchange=e=>selectImportFiles(Array.from(e.target.files));$('#importPlaylist').onchange=()=>$('#newImportPlaylistLabel').hidden=$('#importPlaylist').value!=='new';$('#importAll').onclick=()=>importFiles(pendingFiles);$('#importToPlaylist').onclick=()=>{let playlist=state.playlists.find(p=>p.id===$('#importPlaylist').value);if(!playlist){const name=$('#newImportPlaylist').value.trim();if(!name){$('#importStatus').textContent='Enter a name for your new playlist.';$('#newImportPlaylist').focus();return}playlist={id:crypto.randomUUID(),name,songs:[]}}importFiles(pendingFiles,playlist)};
 (async()=>{try{const r=await fetch('catalog.json');if(!r.ok)throw Error();state.songs=(await r.json()).concat(read('added',[]).filter(s=>validUrl(s.url)));await restoreLocal();render();if(location.hash.startsWith('#room='))await join(location.hash.slice(6))}catch{notice('The library could not load. Refresh when your connection returns.')}})();
@@ -75,3 +82,153 @@ $('#returnToKioskApp').onclick=()=>{if(document.documentElement.dataset.kioskRet
 
 // Narrow integration surface for the optional Play Along panel.
 window.grovePlayer=Object.freeze({current:()=>state.current,position,seek,toggle,isRemote:()=>!!(state.remote||state.cast),pauseLocal:()=>{if(!state.remote&&!state.cast)audio.pause();}});
+
+const storedRemovedSongs=read('removed-songs',[]);
+const removedSongIds=new Set(Array.isArray(storedRemovedSongs)?storedRemovedSongs.filter(id=>typeof id==='string'):[]);
+const removalStyle=document.createElement('style');
+removalStyle.textContent=`#songs .remove-song{box-sizing:border-box;flex:0 0 44px;width:44px;min-width:44px;height:44px;min-height:44px}#removeSongDialog{box-sizing:border-box;width:min(28rem,calc(100vw - 32px));max-width:calc(100vw - 32px);border:1px solid #66756d;border-radius:8px;padding:24px;background:#f8faf8;color:#172923}#removeSongDialog::backdrop{background:rgb(0 0 0 / .55)}#removeSongDialog form{display:grid;gap:12px}#removeSongDialog h2,#removeSongDialog p{margin:0}#removeSongDialog [role=alert]{color:#a32727}#removeSongDialog .remove-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}#removeSongDialog button{min-height:44px;padding:8px 14px}`;
+document.head.append(removalStyle);
+const removalDialog=document.createElement('dialog');
+removalDialog.id='removeSongDialog';
+removalDialog.setAttribute('aria-labelledby','removeSongHeading');
+removalDialog.innerHTML='<form method="dialog"><h2 id="removeSongHeading">Remove song?</h2><p id="removeSongName"></p><p id="removeSongError" role="alert" hidden></p><div class="remove-actions"><button id="cancelRemoveSong" type="button">Cancel</button><button id="confirmRemoveSong" type="button">Remove song</button></div></form>';
+document.body.append(removalDialog);
+let pendingRemoval=null;
+const removalError=document.querySelector('#removeSongError');
+const removalConfirm=document.querySelector('#confirmRemoveSong');
+removalDialog.addEventListener('close',()=>{pendingRemoval=null;removalError.hidden=true;removalError.textContent=''});
+document.querySelector('#cancelRemoveSong').addEventListener('click',()=>removalDialog.close());
+
+function persistRemoval(values){
+ const previous=new Map();
+ try{
+  for(const [name,value] of Object.entries(values)){
+   const key='grove:'+name;
+   previous.set(key,localStorage.getItem(key));
+   localStorage.setItem(key,JSON.stringify(value));
+  }
+ }catch(error){
+  for(const [key,value] of [...previous].reverse())try{if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value)}catch{}
+  throw error;
+ }
+}
+
+function clearRemovedCurrent(song){
+ if(state.current?.id!==song.id)return;
+ if(state.cast){try{castController?.stop()}catch{}}
+ audio.pause();
+ audio.removeAttribute('src');
+ if(audio.readyState>0)audio.load();
+ state.current=null;
+ stopped=true;
+ $('#nowTitle').textContent='Choose your soundtrack';
+ $('#nowGenre').textContent='RPDsGrove · SoundBreak';
+ $('#nowArt').src='art-0.svg';
+}
+
+function filterRemovedSongs(){
+ const removed=new Set(state.songs.filter(song=>removedSongIds.has(song.id)).map(song=>song.id));
+ if(!removed.size)return;
+ state.songs=state.songs.filter(song=>!removed.has(song.id));
+ state.favorites=state.favorites.filter(id=>!removed.has(id));
+ state.history=state.history.filter(id=>!removed.has(id));
+ state.queue=state.queue.filter(id=>!removed.has(id));
+ state.playlists=state.playlists.map(playlist=>({...playlist,songs:playlist.songs.filter(id=>!removed.has(id))}));
+ const current=state.current;
+ if(current&&removed.has(current.id))clearRemovedCurrent(current);
+}
+
+function openRemovalDialog(song){
+ if(!song||state.remote)return;
+ pendingRemoval=song;
+ $('#removeSongName').textContent=song.title+' will be removed from this device.';
+ removalError.hidden=true;
+ removalError.textContent='';
+ removalConfirm.disabled=false;
+ removalDialog.showModal();
+ $('#cancelRemoveSong').focus({preventScroll:true});
+}
+
+async function removeSong(song){
+ if(!song||state.remote)return;
+ removalConfirm.disabled=true;
+ removalError.hidden=true;
+ try{
+  const favorites=state.favorites.filter(id=>id!==song.id);
+  const history=state.history.filter(id=>id!==song.id);
+  const queue=state.queue.filter(id=>id!==song.id);
+  const playlists=state.playlists.map(playlist=>({...playlist,songs:playlist.songs.filter(id=>id!==song.id)}));
+  const values={favorites,history,playlists};
+  const nextRemoved=new Set(removedSongIds);
+  if(!song.local){
+   nextRemoved.add(song.id);
+   values['removed-songs']=[...nextRemoved];
+   values.added=read('added',[]).filter(item=>item?.id!==song.id);
+    if(song.spotify)values['spotify-songs']=spotifySongs.filter(item=>item.id!==song.id);
+  }
+  let localRow;
+  if(song.local){
+   localRow=await fileStore('get',song.id);
+   await fileStore('delete',song.id);
+  }
+  try{persistRemoval(values)}catch(error){if(song.local&&localRow)try{await fileStore('put',localRow)}catch{}throw error}
+  if(!song.local)removedSongIds.add(song.id);
+    if(song.local){URL.revokeObjectURL(song.url);localUrls.delete(song.url)}
+  state.songs=state.songs.filter(item=>item.id!==song.id);
+  state.favorites=favorites;
+  state.history=history;
+  state.queue=queue;
+  state.playlists=playlists;
+  clearRemovedCurrent(song);
+  render();
+  updatePlayer();
+  removalDialog.close();
+  notice('Song removed from this device');
+ }catch(error){
+  removalError.textContent='Could not remove the song. Your library was not changed.';
+  removalError.hidden=false;
+ }finally{removalConfirm.disabled=false}
+}
+
+removalConfirm.addEventListener('click',()=>{if(pendingRemoval)void removeSong(pendingRemoval)});
+const renderBeforeRemoval=render;
+render=function renderWithRemoval(...args){
+ filterRemovedSongs();
+ const result=renderBeforeRemoval(...args);
+ if(state.remote)return result;
+ const songs=visible();
+ document.querySelectorAll('#songs .song').forEach((row,index)=>{
+  const song=songs[index];
+  if(!song||row.querySelector('.remove-song'))return;
+  const removeButton=button('×','Remove '+song.title+' from library',()=>openRemovalDialog(song));
+  removeButton.classList.add('remove-song');
+  row.append(removeButton);
+ });
+ return result;
+};
+
+document.addEventListener('click',event=>{
+ const target=event.target.closest('#songs .song button[aria-label]');
+ const label=target?.getAttribute('aria-label')||'';
+ if(!state.remote||!label.startsWith('Add ')||!label.endsWith(' to queue'))return;
+ const row=target.closest('.song');
+ const index=[...document.querySelectorAll('#songs .song')].indexOf(row);
+ const song=visible()[index];
+ if(!song?.local)return;
+ event.preventDefault();
+ event.stopImmediatePropagation();
+ void command('enqueue',{song});
+},true);
+
+const playBeforeRemoval=play;
+play=async function playWithRemovalGuard(song){
+ if(song&&removedSongIds.has(song.id))return;
+ await playBeforeRemoval(song);
+ if(!song||!removedSongIds.has(song.id))return;
+ state.history=state.history.filter(id=>id!==song.id);
+ state.queue=state.queue.filter(id=>id!==song.id);
+ try{localStorage.setItem('grove:history',JSON.stringify(state.history))}catch{}
+ clearRemovedCurrent(song);
+ render();
+ updatePlayer();
+};

@@ -19,3 +19,6 @@ tools/
 
 # VS Code workspace cruft
 .vscode/*.log
+
+# Grove test dependencies
+tests/node_modules/
