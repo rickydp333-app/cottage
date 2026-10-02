@@ -6,6 +6,7 @@ Old version-1 estimates are deliberately ignored; analyze again for the new engi
 - **Current song:** analyze the library recording, follow playback, and keep the most recent 12 chord maps and corrections in this browser.
 - **Upload a song:** select a local recording; audio stays on this device.
 - **Listen live:** quick major/minor estimates. This approximate mode does not use the detailed full-recording engine.
+- **Identify song:** after you tap Identify, Grove captures up to eight seconds from the microphone and sends that sample to AudD. The clip is not stored by Grove. Identification needs a server-side AudD API token and allows five requests per network per hour; AudD plan charges and privacy terms apply.
 - Tap a section to seek, read the chord name and notes, and see a suggested standard-tuning guitar shape. Slash labels identify the bass.
 - Correct a section from a trusted chart or by ear. **Save chord chart** exports JSON; **Load chord chart** restores it with the matching recording selected. Imported charts are labeled as supplied, never automatically called verified.
 - Repeat chord works for local playback. Right/left-handed views are available.
@@ -25,16 +26,18 @@ Processing is free and on-device: no API key or audio-analysis service. Limits r
 - `npm install --prefix tests` then `npm test --prefix tests`: permission/stream cleanup, saved corrections, extended note display, chart import validation, invalid labels and source mismatch handling.
 - [Fixed real-recording benchmark](https://github.com/rickydp333-app/cottage/tree/main/tests/chord-benchmark): old engine 53.6%, Chordino 84.4% duration-weighted agreement with reduced chord sheets on ten GuitarSet recordings. This small major-chord sample does not establish general full-song or seventh-chord accuracy.
 
-The Play Along panel labels the active song above the current chord. Browser smoke testing covers actual decoding, worker/WASM, timeline and chord display. Desktop and phone-size layouts are checked; responsive emulation is not physical-device testing. Service-worker shell v17 includes the current assets.
+The Play Along panel labels the active song above the current chord. Browser smoke testing covers actual decoding, worker/WASM, timeline and chord display. Desktop and phone-size layouts are checked; responsive emulation is not physical-device testing. Service-worker shell v19 includes the current assets.
 
 ## Whole-song documents
 
 After analysis, choose **Add lyrics / PDF sheet**. A **Song sheet: [title]** shortcut also stays beside the player after the panel closes or playback advances. The sheet contains the entire analyzed timeline, including unknown sections and your corrections. It holds a snapshot of that recording, so switching songs cannot change an open document.
 
+Song identification shows the matched title and artist and opens external searches for chord and lyric references. Grove does not scrape search results or fetch copyrighted lyrics. If you use **Use match in song sheet**, verify that the analyzed audio is the same recording; it labels the existing chord timeline and does not create chords from the short recognition clip. Add only lyrics you own, are licensed to use, or that are public domain, and add their reference URL for attribution.
+
 **Search the web for lyrics and chords** opens external search results for the selected song; Grove does not scrape or import search results. Paste only lyrics you own, are licensed to use, or that are public domain. Add the reference URL to include attribution in the document. Lyrics and source URLs are saved per recording in local browser storage.
 
 Optional markers such as `[C]Down by the [Am]water` put chords above the following words. Plain lyrics are shown separately from the complete timed chord table: alignment is never guessed. There is no automatic speech/lyric transcription.
 
-**Download document** creates a standalone UTF-8 HTML file with all styles included, no scripts or remote resources. **Print / Save as PDF** prints only the document, with repeating timeline headers and sensible page breaks. PDF saving depends on the browser/system print options. A sandboxed preview safely escapes lyrics, titles, chord labels, and source URLs. The text stays on the device. Service-worker shell v17 includes these assets.
+**Download document** creates a standalone UTF-8 HTML file with all styles included, no scripts or remote resources. **Print / Save as PDF** prints only the document, with repeating timeline headers and sensible page breaks. PDF saving depends on the browser/system print options. A sandboxed preview safely escapes lyrics, titles, chord labels, and source URLs. The text stays on the device. Service-worker shell v19 includes these assets.
 
 `node tests/song-sheet.cjs` covers escaping, whole-song coverage, inline chord placement, export, per-recording lyrics and immutable snapshots. UI tests also cover access after a song change. Desktop and 390px browser layouts, the actual downloaded HTML, and all 61 sections of a library song were checked.

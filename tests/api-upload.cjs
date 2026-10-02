@@ -1,12 +1,13 @@
 const {test,before,after}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs/promises');
+const http=require('node:http');
 const os=require('node:os');
 const path=require('node:path');
 const net=require('node:net');
 const {spawn}=require('node:child_process');
 
-let tempRoot,origin,server,webRoot,privateRoot;
+let tempRoot,origin,server,webRoot,privateRoot,auddServer,auddPort=0,auddRequestCount=0,auddRequestBody='';
 
 async function freePort(){
  const socket=net.createServer();
@@ -33,10 +34,13 @@ before(async()=>{
  await fs.mkdir(appRoot,{recursive:true});
  await fs.mkdir(path.join(tempRoot,'private-tmp'));
  privateRoot=path.join(tempRoot,'persistent-private');
+ await fs.mkdir(privateRoot,{recursive:true});await fs.writeFile(path.join(privateRoot,'audd-token.txt'),'test-recognition-token',{mode:0o600});
  await fs.copyFile(path.join(__dirname,'../rpdsgrove/api.php'),path.join(appRoot,'api.php'));
+ auddServer=http.createServer((req,res)=>{const chunks=[];req.on('data',chunk=>chunks.push(chunk));req.on('end',()=>{auddRequestCount++;auddRequestBody=Buffer.concat(chunks).toString('latin1');res.setHeader('Content-Type','application/json');res.end(JSON.stringify({status:'success',result:{title:'Recognized Song',artist:'Recognized Artist',album:'Practice Album',release_date:'2025',timecode:'00:12'}}))})});
+ await new Promise(resolve=>auddServer.listen(0,'127.0.0.1',resolve));auddPort=auddServer.address().port;
  const port=await freePort();origin='http://127.0.0.1:'+port;
  const php=process.env.PHP_CLI||'php';
- server=spawn(php,['-d','sys_temp_dir='+path.join(tempRoot,'private-tmp'),'-S','127.0.0.1:'+port,'-t',webRoot],{stdio:'ignore',env:{...process.env,RPDGROVE_PRIVATE_DIR:privateRoot}});
+ server=spawn(php,['-d','sys_temp_dir='+path.join(tempRoot,'private-tmp'),'-S','127.0.0.1:'+port,'-t',webRoot],{stdio:'ignore',env:{...process.env,RPDGROVE_PRIVATE_DIR:privateRoot,RPDGROVE_AUDD_TOKEN_FILE:path.join(privateRoot,'audd-token.txt'),RPDGROVE_AUDD_ENDPOINT:'http://127.0.0.1:'+auddPort+'/'}});
  for(let attempt=0;attempt<100;attempt++){
   if(server.exitCode!==null)throw Error('PHP server exited before startup. Set PHP_CLI to the PHP executable path.');
   try{await fetch(origin+'/rpdsgrove/api.php');break;}catch{await new Promise(resolve=>setTimeout(resolve,50));}
@@ -45,6 +49,7 @@ before(async()=>{
 
 after(async()=>{
  if(server&&!server.killed){server.kill();await new Promise(resolve=>server.once('exit',resolve));}
+ if(auddServer)await new Promise(resolve=>auddServer.close(resolve));
  if(tempRoot)await fs.rm(tempRoot,{recursive:true,force:true});
 });
 
@@ -99,4 +104,27 @@ test('listening rooms require owner tokens and accept only issued local media UR
  }
  const limited=await fetch(origin+'/rpdsgrove/api.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create'})});
  assert.equal(limited.status,429);
+});
+
+test('recognition proxies a short sample using the server token and returns metadata only',async()=>{
+ const form=new FormData();form.append('action','identify');form.append('sample',new Blob([wavFixture()],{type:'audio/wav'}),'sample.wav');
+ const response=await fetch(origin+'/rpdsgrove/api.php',{method:'POST',headers:{Origin:origin},body:form});
+ assert.equal(response.status,200,await response.clone().text());
+ const result=await response.json();
+ assert.equal(result.ok,true);assert.equal(result.match.title,'Recognized Song');assert.equal(result.match.artist,'Recognized Artist');
+ assert.equal('lyrics'in result.match,false);assert.equal(auddRequestCount,1);assert.match(auddRequestBody,/test-recognition-token/);assert.match(auddRequestBody,/sample\.wav/);
+ for(let index=1;index<5;index++){
+  const repeated=new FormData();repeated.append('action','identify');repeated.append('sample',new Blob([wavFixture()],{type:'audio/wav'}),'sample.wav');
+  assert.equal((await fetch(origin+'/rpdsgrove/api.php',{method:'POST',body:repeated})).status,200);
+ }
+ const limitedForm=new FormData();limitedForm.append('action','identify');limitedForm.append('sample',new Blob([wavFixture()],{type:'audio/wav'}),'sample.wav');
+ const limited=await fetch(origin+'/rpdsgrove/api.php',{method:'POST',body:limitedForm});
+ assert.equal(limited.status,429);assert.equal(auddRequestCount,5,'rate-limited samples must not reach AudD');
+});
+
+test('recognition fails closed when no server token is configured',async()=>{
+ await fs.rm(path.join(privateRoot,'audd-token.txt'),{force:true});
+ const form=new FormData();form.append('action','identify');form.append('sample',new Blob([wavFixture()],{type:'audio/wav'}),'sample.wav');
+ const response=await fetch(origin+'/rpdsgrove/api.php',{method:'POST',body:form});
+ assert.equal(response.status,503);assert.match((await response.json()).error,/not configured/);
 });

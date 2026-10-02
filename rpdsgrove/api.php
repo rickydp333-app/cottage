@@ -24,7 +24,7 @@ if (stripos($contentType,'application/json')===0) {
  if (strlen($raw)>32768) fail('Request too large.',413);
  $b=json_decode($raw,true);
  if (!is_array($b)) fail('Invalid request.');
-}elseif(stripos($contentType,'multipart/form-data')===0 && ($_POST['action']??'')==='upload'){
+}elseif(stripos($contentType,'multipart/form-data')===0 && in_array($_POST['action']??'', ['upload','identify'],true)){
  $b=$_POST;
 }else fail('Use JSON or multipart audio upload.',415);
 $action=$b['action']??'';
@@ -50,6 +50,41 @@ function song($s): ?array {
 function ids($a): array {if(!is_array($a))return [];return array_values(array_slice(array_filter($a,fn($v)=>is_string($v)&&preg_match('/^[a-zA-Z0-9-]{1,64}$/D',$v)),0,200));}
 function number($v,float $min,float $max): float {return is_numeric($v)?max($min,min($max,(float)$v)):$min;}
 function audioMime(string $extension): ?string {return ['mp3'=>'audio/mpeg','wav'=>'audio/wav','m4a'=>'audio/mp4','ogg'=>'audio/ogg','flac'=>'audio/flac','aac'=>'audio/aac'][$extension]??null;}
+function recognitionMime(string $extension): ?string {return ['webm'=>'audio/webm','mp4'=>'audio/mp4','m4a'=>'audio/mp4','ogg'=>'audio/ogg','opus'=>'audio/ogg','wav'=>'audio/wav','mp3'=>'audio/mpeg','aac'=>'audio/aac'][$extension]??null;}
+function recognitionLimit(string $privateDir): void {
+ $address=$_SERVER['REMOTE_ADDR']??'';$packed=is_string($address)?@inet_pton($address):false;if($packed===false)fail('Song recognition is unavailable.',503);if(strlen($packed)===16)$packed=substr($packed,0,8);
+ if(!is_dir($privateDir)&&!@mkdir($privateDir,0700,true)&&!is_dir($privateDir))fail('Song recognition is unavailable.',503);
+ $secretPath=$privateDir.'/recognition-rate.key';$secret=@file_get_contents($secretPath);if($secret===false){$secret=random_bytes(32);if(file_put_contents($secretPath,$secret,LOCK_EX)===false)fail('Song recognition is unavailable.',503);@chmod($secretPath,0600);}if(strlen($secret)!==32)fail('Song recognition is unavailable.',503);
+ $lock=fopen($privateDir.'/recognition-rate.lock','c+');if(!$lock||!flock($lock,LOCK_EX))fail('Song recognition is temporarily unavailable.',503);
+ $now=time();$path=$privateDir.'/recognition-rate.json';$rates=json_decode((string)@file_get_contents($path),true);if(!is_array($rates))$rates=[];
+ foreach($rates as $key=>$times){if(!is_array($times)){unset($rates[$key]);continue;}$recent=array_values(array_filter($times,fn($time)=>is_int($time)&&$time>$now-3600));if($recent)$rates[$key]=$recent;else unset($rates[$key]);}
+ $key=hash_hmac('sha256',$packed,$secret);$times=$rates[$key]??[];if(count($times)>=5){flock($lock,LOCK_UN);fclose($lock);fail('Song recognition limit reached. Try again later.',429);}
+ $times[]=$now;$rates[$key]=$times;$json=json_encode($rates);if(!is_string($json)||file_put_contents($path,$json,LOCK_EX)===false){flock($lock,LOCK_UN);fclose($lock);fail('Song recognition is temporarily unavailable.',503);}@chmod($path,0600);flock($lock,LOCK_UN);fclose($lock);
+}
+function recognizeSong(string $privateDir): void {
+ $file=$_FILES['sample']??null;if(!is_array($file)||!isset($file['error'],$file['size'],$file['tmp_name'],$file['name']))fail('Record a short sample first.');
+ if($file['error']!==UPLOAD_ERR_OK)fail($file['error']===UPLOAD_ERR_INI_SIZE||$file['error']===UPLOAD_ERR_FORM_SIZE?'Recognition sample is too large.':'Recognition sample upload failed.',413);
+ $size=(int)$file['size'];$extension=strtolower(pathinfo((string)$file['name'],PATHINFO_EXTENSION));$mime=recognitionMime($extension);
+ if(!$mime||$size<1024||$size>10*1024*1024||!is_uploaded_file((string)$file['tmp_name']))fail('Record an audio sample smaller than 10 MB.',415);
+ if(function_exists('finfo_open')){$finfo=finfo_open(FILEINFO_MIME_TYPE);$detected=$finfo?finfo_file($finfo,(string)$file['tmp_name']):false;if($finfo)finfo_close($finfo);if(is_string($detected)&&!str_starts_with($detected,'audio/')&&!in_array($detected,['application/octet-stream','video/mp4'],true))fail('The sample is not recognized as audio.',415);}
+ $tokenValue=getenv('AUDD_API_TOKEN');$tokenFile=getenv('RPDGROVE_AUDD_TOKEN_FILE');if(!is_string($tokenFile)||$tokenFile==='')$tokenFile=dirname($privateDir).'/audd-token.txt';
+ $token=trim(is_string($tokenValue)&&$tokenValue!==''?$tokenValue:(string)@file_get_contents($tokenFile));if($token==='')fail('Song recognition is not configured on the server.',503);
+ recognitionLimit($privateDir);
+ $override=getenv('RPDGROVE_AUDD_ENDPOINT');$endpoint=is_string($override)&&$override!==''?$override:'https://api.audd.io/';$parts=parse_url($endpoint);$host=strtolower((string)($parts['host']??''));$localEndpoint=is_string($override)&&$override!==''&&in_array($host,['127.0.0.1','localhost','::1'],true)&&($parts['scheme']??'')==='http';
+ if(!$localEndpoint&&(($parts['scheme']??'')!=='https'||$host!=='api.audd.io'||($parts['path']??'/')!=='/'))fail('Recognition provider endpoint is invalid.',503);
+ $audio=@file_get_contents((string)$file['tmp_name']);if(!is_string($audio))fail('Recognition sample could not be read.',400);
+ $boundary='----------------rpdsgrove'.bin2hex(random_bytes(16));$filename='sample.'.$extension;
+ $body='--'.$boundary."\r\nContent-Disposition: form-data; name=\"api_token\"\r\n\r\n".$token."\r\n";
+ $body.='--'.$boundary."\r\nContent-Disposition: form-data; name=\"file\"; filename=\"".$filename."\"\r\nContent-Type: ".$mime."\r\n\r\n".$audio."\r\n--".$boundary."--\r\n";
+ $context=stream_context_create(['http'=>['method'=>'POST','header'=>"Content-Type: multipart/form-data; boundary=".$boundary."\r\nAccept: application/json\r\n",'content'=>$body,'timeout'=>20,'ignore_errors'=>true,'follow_location'=>0,'max_redirects'=>0],'ssl'=>['verify_peer'=>true,'verify_peer_name'=>true]]);
+ $response=@file_get_contents($endpoint,false,$context);$status=0;foreach($http_response_header??[] as $header){if(preg_match('/^HTTP\/\S+\s+(\d{3})/',$header,$match))$status=(int)$match[1];}
+ if(!is_string($response)||$status<200||$status>=300)fail('Song recognition provider is temporarily unavailable.',502);
+ $data=json_decode($response,true);if(!is_array($data)||($data['status']??'')!=='success')fail('Song recognition failed. Try another sample.',502);
+ $result=$data['result']??null;if(!is_array($result)){echo json_encode(['ok'=>true,'match'=>null]);exit;}
+ $match=['title'=>substr((string)($result['title']??''),0,200),'artist'=>substr((string)($result['artist']??''),0,200),'album'=>substr((string)($result['album']??''),0,200),'releaseDate'=>substr((string)($result['release_date']??''),0,40),'timecode'=>substr((string)($result['timecode']??''),0,20)];
+ if($match['title']===''||$match['artist']===''){echo json_encode(['ok'=>true,'match'=>null]);exit;}
+ echo json_encode(['ok'=>true,'match'=>$match],JSON_UNESCAPED_SLASHES);exit;
+}
 function serveUploadedAudio(string $uploadDir,$value,string $method): void {
  if(!is_string($value)||!preg_match('/^[a-f0-9]{48}$/D',$value))fail('Invalid media link.',404);
  $metaPath=$uploadDir.'/'.$value.'.json';$meta=json_decode((string)@file_get_contents($metaPath),true);
@@ -72,6 +107,7 @@ function serveUploadedAudio(string $uploadDir,$value,string $method): void {
  fclose($stream);exit;
 }
 $now=time();
+if($action==='identify')recognizeSong($privateDir);
 if($action==='upload'){
  $maximum=100*1024*1024;$requestLength=(int)($_SERVER['CONTENT_LENGTH']??0);
  if($requestLength>$maximum+1024*1024)fail('Choose an audio file smaller than 100 MB.',413);
