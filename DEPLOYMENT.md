@@ -44,6 +44,9 @@ The workflow deploys the live website files:
 - Main site files: `index.html`, `app.js`, `data.js`, `styles.css`, `service-worker.js`, `manifest.webmanifest`, `assets/`
 - renterscottage calendar app (all files)
 - whats-it-worth app (built dist/ and api.php)
+- NickVector artwork vectorizer (nickvector/dist/ only) at https://rdpsplace.me/nickvector/
+
+NickVector source is in `nickvector/`. Its build uses `npm ci`, `npm test`, and `npm run build`; the deployment uploads only the generated static files to its own directory. Raster processing stays in each visitor's browser, with no artwork upload endpoint. The gym application at `app.rdpsplace.me` is not changed by this addition.
 
 ## How Updates Work
 
